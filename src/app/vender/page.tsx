@@ -1,8 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { IconShield, IconCheck, IconArrow, IconStar, IconTag, IconCart, IconStore } from "@/components/icons";
+import { useApi } from "@/hooks/useApi";
+import { fmt, fmt0 } from "@/components/ui";
+import type { BuylistOffer } from "@/types";
 
 // ─── How it works steps ─────────────────────────────────────────
 const STEPS = [
@@ -58,6 +61,17 @@ export default function VenderPage() {
   const handlePhotoClick = () => {
     setPhotoSelected(true);
   };
+
+  // Fetch active buylist offers from API
+  const { data: buylistData, loading: buylistLoading } =
+    useApi<{ offers?: BuylistOffer[] }>("/api/buylist/active");
+
+  const buylistOffers: BuylistOffer[] = useMemo(() => {
+    if (buylistData?.offers && buylistData.offers.length > 0) return buylistData.offers;
+    // Fallback mock data
+    if (!buylistData) return [];
+    return [];
+  }, [buylistData]);
 
   return (
     <div className="page">
@@ -394,6 +408,42 @@ export default function VenderPage() {
             </div>
           </div>
         </div>
+
+        {/* ════════════════ BUYLIST ATIVO ════════════════ */}
+        {buylistOffers.length > 0 && (
+          <section style={{ marginBottom: 48 }}>
+            <div className="sec-head">
+              <div>
+                <h2>Buylist ativo</h2>
+                <div className="sub">Lojas comprando agora — venda direto</div>
+              </div>
+            </div>
+            <div className="card card-pad">
+              <div className="col gap-8">
+                {buylistOffers.slice(0, 6).map((offer, i) => (
+                  <div
+                    key={offer.buylistId || i}
+                    className="row center between"
+                    style={{
+                      padding: "10px 0",
+                      borderBottom: i < Math.min(buylistOffers.length, 6) - 1 ? "1px solid var(--border)" : "none",
+                    }}
+                  >
+                    <div className="col" style={{ gap: 2 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13 }}>{offer.storeName}</span>
+                      <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
+                        {offer.condition}{offer.isFoil ? " · Foil" : ""} · até {offer.maxQty} un.
+                      </span>
+                    </div>
+                    <span className="mono" style={{ fontWeight: 700, fontSize: 14, color: "var(--up)" }}>
+                      {fmt(offer.priceBrl)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ════════════════ BOTTOM TRUST ════════════════ */}
         <div

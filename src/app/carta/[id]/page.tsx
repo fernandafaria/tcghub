@@ -14,6 +14,9 @@ import {
   EnergyPips, StoreBadge, Stars, fmt, fmt0,
 } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { useApi } from "@/hooks/useApi";
+import { apiCardsToCards } from "@/lib/adapters";
+import type { ApiCardsResponse } from "@/types";
 
 // ─── Mock offer generator ──────────────────────────────────────────────────
 
@@ -34,8 +37,8 @@ function generateOffers(card: Card): CardOffer[] {
 
 // ─── Synergy card mock (related cards) ─────────────────────────────────────
 
-function findSynergies(card: Card): Card[] {
-  const sameTcg = CARDS.filter((c) => c.tcg === card.tcg && c.id !== card.id);
+function findSynergies(card: Card, allCards: Card[]): Card[] {
+  const sameTcg = allCards.filter((c) => c.tcg === card.tcg && c.id !== card.id);
   const sameTags = sameTcg.filter((c) =>
     c.tags.some((t) => card.tags.includes(t))
   );
@@ -59,11 +62,49 @@ const COND_TABS = ["Todos", "NM", "SP", "MP"];
 export default function CardDetailPage() {
   const params = useParams();
   const id = params?.id as string;
-  const card = useMemo(() => cardById(id), [id]);
+
+  // Fetch all cards from API to find this one
+  const { data: apiData, loading: cardsLoading } =
+    useApi<ApiCardsResponse>("/api/cards?limit=200");
+
+  const apiCards: Card[] = useMemo(() => {
+    if (!apiData?.cards) return [];
+    return apiCardsToCards(apiData.cards);
+  }, [apiData]);
+
+  // Combine API + mock data
+  const allCards: Card[] = useMemo(() => {
+    if (apiCards.length > 0) return apiCards;
+    return CARDS;
+  }, [apiCards]);
+
+  // Find card by slug/id
+  const card = useMemo(() => {
+    // Try API cards first, then mock fallback
+    const fromApi = apiCards.find((c) => c.id === id);
+    if (fromApi) return fromApi;
+    return cardById(id);
+  }, [id, apiCards]);
 
   const [conditionFilter, setConditionFilter] = useState("Todos");
   const [addedToCart, setAddedToCart] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
+
+  // Loading state
+  if (cardsLoading && !card) {
+    return (
+      <div className="page">
+        <div className="wrap" style={{ textAlign: "center", paddingTop: 80 }}>
+          <h1 style={{ fontFamily: "var(--fdisplay)", fontSize: 28, fontWeight: 700 }}>
+            Carregando...
+          </h1>
+          <p style={{ color: "var(--muted)", marginTop: 12 }}>
+            Buscando dados da carta...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // If card not found
   if (!card) {
@@ -74,7 +115,7 @@ export default function CardDetailPage() {
             Carta não encontrada
           </h1>
           <p style={{ color: "var(--muted)", marginTop: 12 }}>
-            A carta com ID <span className="mono">{id}</span> não foi encontrada.
+            A carta com slug <span className="mono">{id}</span> não foi encontrada.
           </p>
           <Link href="/" className="btn btn-gold" style={{ marginTop: 24 }}>
             <IconBack /> Voltar ao início
@@ -85,7 +126,7 @@ export default function CardDetailPage() {
   }
 
   const offers = useMemo(() => generateOffers(card), [card]);
-  const synergies = useMemo(() => findSynergies(card), [card]);
+  const synergies = useMemo(() => findSynergies(card, allCards), [card, allCards]);
 
   const filteredOffers =
     conditionFilter === "Todos"
@@ -100,7 +141,7 @@ export default function CardDetailPage() {
 
   // Sparkline data for price history
   const sparkPoints = useMemo(
-    () => genSpark(card.id.charCodeAt(0) + card.id.charCodeAt(1) || 7, card.mo >= 0),
+    () => genSpark(card.id.charCodeAt(0) + (card.id.charCodeAt(1) || 7), card.mo >= 0),
     [card]
   );
 
@@ -263,7 +304,7 @@ export default function CardDetailPage() {
                   </span>
                 </div>
                 <p style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.55 }}>
-                  {card.meta}
+                  {card.meta || "Sem análise disponível para esta carta."}
                 </p>
               </div>
 
@@ -376,6 +417,11 @@ export default function CardDetailPage() {
                     </div>
                   </Link>
                 ))}
+                {synergies.length === 0 && (
+                  <p style={{ color: "var(--muted)", fontSize: 12, textAlign: "center", padding: "12px 0" }}>
+                    Nenhuma sinergia encontrada.
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -500,215 +546,59 @@ export default function CardDetailPage() {
                 ))}
               </div>
 
-              {/* Store offer table */}
+              {/* Offer list */}
               <div className="col" style={{ gap: 8 }}>
-                <div
-                  className="row"
-                  style={{
-                    padding: "4px 8px",
-                    fontSize: 11,
-                    color: "var(--muted)",
-                    fontFamily: "var(--fmono)",
-                    textTransform: "uppercase",
-                    letterSpacing: "0.06em",
-                    gap: 8,
-                  }}
-                >
-                  <span style={{ flex: 1 }}>Loja</span>
-                  <span style={{ width: 56, textAlign: "center" }}>Cond.</span>
-                  <span style={{ width: 28, textAlign: "center" }}>Qtd.</span>
-                  <span style={{ width: 80, textAlign: "right" }}>Preço</span>
-                  <span style={{ width: 70 }} />
-                </div>
-
-                {filteredOffers.length === 0 ? (
+                {filteredOffers.map((offer, i) => (
                   <div
+                    key={i}
+                    className="row center between"
                     style={{
-                      textAlign: "center",
-                      padding: "24px 0",
-                      color: "var(--muted)",
-                      fontSize: 13,
+                      padding: "10px 12px",
+                      background: "var(--surface)",
+                      borderRadius: "var(--r-sm)",
                     }}
                   >
-                    Nenhuma oferta encontrada para essa condição.
-                  </div>
-                ) : (
-                  filteredOffers.map((offer, i) => (
-                    <div
-                      key={`${offer.store.id}-${i}`}
-                      className="row center"
-                      style={{
-                        gap: 8,
-                        padding: "10px 10px",
-                        background: "var(--surface)",
-                        borderRadius: "var(--r-sm)",
-                        cursor: "pointer",
-                        transition: "0.16s",
-                      }}
-                      onMouseEnter={(e) => {
-                        (e.currentTarget as HTMLElement).style.background =
-                          "var(--card-2)";
-                      }}
-                      onMouseLeave={(e) => {
-                        (e.currentTarget as HTMLElement).style.background =
-                          "var(--surface)";
-                      }}
-                    >
-                      {/* Store info */}
-                      <div
-                        className="col"
-                        style={{ flex: 1, minWidth: 0, gap: 2 }}
-                      >
-                        <StoreBadge
-                          name={offer.store.name}
-                          verified={offer.store.verified}
-                        />
-                        <div className="row center" style={{ gap: 8 }}>
-                          <span
-                            className="mono"
-                            style={{ fontSize: 10.5, color: "var(--muted)" }}
-                          >
-                            {offer.store.city}
-                          </span>
-                          <Stars rating={offer.store.rating} />
-                          <span
-                            style={{
-                              fontSize: 10,
-                              color: "var(--teal)",
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 3,
-                            }}
-                          >
-                            <span style={{ display: "inline-flex" }}><IconShield /></span>
-                            {offer.store.ships}
-                          </span>
-                        </div>
+                    <div className="col" style={{ gap: 2 }}>
+                      <div className="row center" style={{ gap: 8 }}>
+                        <StoreBadge name={offer.store.name} verified={offer.store.verified} />
+                        <Stars rating={offer.store.rating} />
                       </div>
-
-                      {/* Condition */}
-                      <span
-                        className="mono"
-                        style={{
-                          fontSize: 11,
-                          width: 56,
-                          textAlign: "center",
-                          color: "var(--text-2)",
-                          fontWeight: 500,
-                        }}
-                      >
-                        {offer.cond}
+                      <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
+                        {COND_LABELS[offer.cond] || offer.cond} · {offer.stock} em estoque
                       </span>
-
-                      {/* Stock */}
-                      <span
-                        className="mono"
-                        style={{
-                          fontSize: 11,
-                          width: 28,
-                          textAlign: "center",
-                          color: "var(--muted)",
-                        }}
-                      >
-                        {offer.stock}
-                      </span>
-
-                      {/* Price */}
-                      <span
-                        className="mono"
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 700,
-                          width: 80,
-                          textAlign: "right",
-                        }}
-                      >
+                    </div>
+                    <div className="row center" style={{ gap: 10 }}>
+                      <span className="mono" style={{ fontWeight: 700, fontSize: 15 }}>
                         {fmt(offer.price)}
                       </span>
-
-                      {/* Buy button */}
                       <button
                         className="btn btn-gold btn-sm"
-                        style={{ width: 70 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleBuy(offer);
-                        }}
+                        onClick={() => handleBuy(offer)}
                       >
-                        <span style={{ display: "inline-flex" }}><IconCart /></span>{" "}
-                        Comprar
+                        <IconCart /> Comprar
                       </button>
                     </div>
-                  ))
-                )}
+                  </div>
+                ))}
               </div>
-
-              {/* Action buttons */}
-              <div className="row" style={{ gap: 10 }}>
-                <button
-                  className={`btn btn-ghost ${wishlisted ? "" : ""}`}
-                  style={{
-                    flex: 1,
-                    color: wishlisted ? "#e8688c" : "var(--text-2)",
-                    background: wishlisted
-                      ? "color-mix(in oklch, #e8688c 14%, transparent)"
-                      : "var(--surface)",
-                    borderColor: wishlisted
-                      ? "color-mix(in oklch, #e8688c 36%, transparent)"
-                      : "var(--border)",
-                  }}
-                  onClick={handleWishlist}
-                >
-                  <span style={{ color: wishlisted ? "#e8688c" : "var(--muted)", display: "inline-flex" }}>
-                    <IconHeart className="ic" />
-                  </span>
-                  {wishlisted ? "Na wishlist" : "Wishlist"}
-                </button>
-                <button className="btn btn-violet" onClick={handleWatchAlert}>
-                  <IconBell /> Alerta de preço
-                </button>
-              </div>
-
-              {/* Meta text */}
-              {card.meta && (
-                <p
-                  style={{
-                    fontSize: 12,
-                    color: "var(--text-2)",
-                    lineHeight: 1.5,
-                    padding: "10px 12px",
-                    background: "var(--violet-bg)",
-                    borderRadius: "var(--r-sm)",
-                    border: "1px solid var(--violet-bd)",
-                  }}
-                >
-                  <span style={{ color: "var(--violet-2)", display: "inline", marginRight: 6 }}><IconBrain className="ic" /></span>
-                  {card.meta}
-                </p>
-              )}
             </div>
 
-            {/* Trust */}
-            <div
-              className="card card-pad"
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: 10,
-                background: "var(--teal-bg)",
-                borderColor: "var(--teal-bd)",
-              }}
-            >
-              <div className="row center" style={{ gap: 8 }}>
-                <span style={{ color: "var(--teal)", display: "inline-flex" }}><IconShield className="ic" /></span>
-                <span style={{ fontWeight: 600, fontSize: 14, color: "var(--teal-2)" }}>
-                  Compra protegida
-                </span>
-              </div>
-              <p style={{ fontSize: 12, color: "var(--text-2)", lineHeight: 1.5 }}>
-                O pagamento fica retido até você confirmar que recebeu a carta
-                na condição anunciada. Loja verificada, entrega rastreada.
-              </p>
+            {/* Action buttons */}
+            <div className="row" style={{ gap: 10 }}>
+              <button
+                className="btn btn-ghost"
+                onClick={handleWishlist}
+                style={{ flex: 1 }}
+              >
+                <IconHeart /> {wishlisted ? "Na wishlist" : "Wishlist"}
+              </button>
+              <button
+                className="btn btn-violet"
+                onClick={handleWatchAlert}
+                style={{ flex: 1 }}
+              >
+                <IconBell /> Alerta de preço
+              </button>
             </div>
           </div>
         </div>

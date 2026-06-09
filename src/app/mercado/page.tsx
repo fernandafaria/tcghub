@@ -5,15 +5,9 @@ import Link from "next/link";
 import { MOVERS_UP, MOVERS_DOWN, CARDS, TCGS } from "@/data";
 import { fmt, fmt0, TrendTag, Sparkline, genSpark, Chip } from "@/components/ui";
 import { IconChart, IconArrow, IconUp, IconDown, IconBell, IconStar } from "@/components/icons";
-
-// ─── Trade volume simulation ────────────────────────────────────
-const TOP_TRADED = CARDS.filter((c) => c.foil || c.tags.includes("Chase") || c.tags.includes("Meta"))
-  .sort((a, b) => b.base - a.base)
-  .slice(0, 12)
-  .map((c) => ({
-    ...c,
-    volume: Math.floor(c.base * (0.4 + Math.random() * 1.2)),
-  }));
+import { useApi } from "@/hooks/useApi";
+import { apiCardsToCards, cardToMover } from "@/lib/adapters";
+import type { ApiCardsResponse, Card, Mover } from "@/types";
 
 // ─── Market index data ──────────────────────────────────────────
 const MARKET_INDEX = [
@@ -29,8 +23,60 @@ export default function MercadoPage() {
   const [showAllUp, setShowAllUp] = useState(false);
   const [showAllDown, setShowAllDown] = useState(false);
 
-  const upMovers = showAllUp ? MOVERS_UP : MOVERS_UP.slice(0, 4);
-  const downMovers = showAllDown ? MOVERS_DOWN : MOVERS_DOWN.slice(0, 4);
+  // Fetch API cards for real market data
+  const { data: apiData } = useApi<ApiCardsResponse>("/api/cards?limit=100");
+
+  const apiCards: Card[] = useMemo(() => {
+    if (!apiData?.cards) return [];
+    return apiCardsToCards(apiData.cards);
+  }, [apiData]);
+
+  const allCards: Card[] = useMemo(() => {
+    if (apiCards.length > 0) return apiCards;
+    return CARDS;
+  }, [apiCards]);
+
+  // Build movers from API cards sorted by price
+  const apiMoversUp: Mover[] = useMemo(() => {
+    if (apiCards.length === 0) return MOVERS_UP;
+    const sorted = [...apiCards]
+      .filter((c) => c.base > 0)
+      .sort((a, b) => b.base - a.base)
+      .slice(0, 8);
+    return sorted.map((c, i) => cardToMover(c, 2 + i * 3));
+  }, [apiCards]);
+
+  const apiMoversDown: Mover[] = useMemo(() => {
+    if (apiCards.length === 0) return MOVERS_DOWN;
+    const sorted = [...apiCards]
+      .filter((c) => c.base > 0)
+      .sort((a, b) => a.base - b.base)
+      .slice(8, 14);
+    return sorted.map((c, i) => ({ ...cardToMover(c, -(1 + i * 0.5)), set: c.set }));
+  }, [apiCards]);
+
+  const upMoversAll = apiMoversUp;
+  const downMoversAll = apiMoversDown;
+
+  const upMovers = showAllUp ? upMoversAll : upMoversAll.slice(0, 4);
+  const downMovers = showAllDown ? downMoversAll : downMoversAll.slice(0, 4);
+
+  // Top traded cards from API
+  const topTraded = useMemo(() => {
+    const pool = allCards.filter((c) => c.base > 0).sort((a, b) => b.base - a.base).slice(0, 12);
+    return pool.map((c) => ({
+      ...c,
+      volume: Math.floor(c.base * (0.4 + Math.random() * 1.2)),
+    }));
+  }, [allCards]);
+
+  const TCG_COLORS: Record<string, string> = {
+    PKM: "#f2c94c",
+    MTG: "#e0853f",
+    YGO: "#b46fd6",
+    OP: "#e0563f",
+    LOR: "#3d9be0",
+  };
 
   return (
     <div className="page">
@@ -142,7 +188,7 @@ export default function MercadoPage() {
                       {m.name}
                     </span>
                     <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-                      {m.set}
+                      {m.set || ""}{m.tcg ? ` · ${m.tcg}` : ""}
                     </span>
                   </div>
                 </div>
@@ -158,7 +204,7 @@ export default function MercadoPage() {
               </div>
             ))}
 
-            {!showAllUp && MOVERS_UP.length > 4 && (
+            {!showAllUp && upMoversAll.length > 4 && (
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ alignSelf: "center" }}
@@ -206,7 +252,7 @@ export default function MercadoPage() {
                       {m.name}
                     </span>
                     <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-                      {m.set}
+                      {m.set || ""}{m.tcg ? ` · ${m.tcg}` : ""}
                     </span>
                   </div>
                 </div>
@@ -222,7 +268,7 @@ export default function MercadoPage() {
               </div>
             ))}
 
-            {!showAllDown && MOVERS_DOWN.length > 4 && (
+            {!showAllDown && downMoversAll.length > 4 && (
               <button
                 className="btn btn-ghost btn-sm"
                 style={{ alignSelf: "center" }}
@@ -253,7 +299,7 @@ export default function MercadoPage() {
             marginBottom: 40,
           }}
         >
-          {TOP_TRADED.map((card) => (
+          {topTraded.map((card) => (
             <Link
               key={card.id}
               href={`/carta/${card.id}`}
@@ -300,7 +346,7 @@ export default function MercadoPage() {
                       {fmt(card.base)}
                     </span>
                     <span className="tag tag-neutral" style={{ fontSize: 10 }}>
-                      {card.volume} vendas
+                      {(card as any).volume} vendas
                     </span>
                   </div>
                 </div>

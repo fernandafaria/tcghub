@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useMemo } from 'react';
+import { Suspense, useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { Card, BuyCategory } from '@/types';
 import { CARDS, PRODUCTS, PRODUCT_CATS } from '@/data';
@@ -10,6 +10,9 @@ import {
   IconPkg, IconLayers, IconGrid, IconBrain, IconTrash,
   IconPlus, IconMinus, IconArrow,
 } from '@/components/icons';
+import { useApi } from '@/hooks/useApi';
+import { apiCardsToCards } from '@/lib/adapters';
+import type { ApiCardsResponse } from '@/types';
 
 // Energy/type colors for swatches
 const ENERGY_OPTIONS = [
@@ -55,22 +58,37 @@ function ComprarContent() {
   const [deck, setDeck] = useState<DeckEntry[]>([]);
   const [decklistText, setDecklistText] = useState('');
 
+  // ─── Fetch cards from API ──────────────────────────────────────
+  const { data: apiData, loading: cardsLoading } =
+    useApi<ApiCardsResponse>('/api/cards?limit=200');
+
+  const apiCards: Card[] = useMemo(() => {
+    if (!apiData?.cards) return [];
+    return apiCardsToCards(apiData.cards);
+  }, [apiData]);
+
+  // Combine API cards with mock data as fallback
+  const allCards: Card[] = useMemo(() => {
+    if (apiCards.length > 0) return apiCards;
+    return CARDS;
+  }, [apiCards]);
+
   // Available sets from cards
   const sets = useMemo(() => {
-    const s = new Set(CARDS.map((c) => c.set));
+    const s = new Set(allCards.map((c) => c.set));
     return Array.from(s).sort();
-  }, []);
+  }, [allCards]);
 
   // Filtered cards for pick mode
   const filteredCards = useMemo(() => {
-    return CARDS.filter((c) => {
+    return allCards.filter((c) => {
       if (search && !c.name.toLowerCase().includes(search.toLowerCase())
         && !c.set.toLowerCase().includes(search.toLowerCase())) return false;
       if (selectedSet && c.set !== selectedSet) return false;
       if (selectedEnergy && !c.energy.includes(selectedEnergy)) return false;
       return true;
     });
-  }, [search, selectedSet, selectedEnergy]);
+  }, [search, selectedSet, selectedEnergy, allCards]);
 
   // Get products for non-avulsas categories
   const catProducts = useMemo(() => {
@@ -130,14 +148,14 @@ function ComprarContent() {
       const rest = match[2].trim();
 
       // Try to match by exact name first, then by set+num pattern
-      let card = CARDS.find((c) => c.name === rest);
+      let card = allCards.find((c) => c.name === rest);
       if (!card) {
         const parts = rest.split(' ');
         if (parts.length >= 3) {
           const num = parts[parts.length - 1];
           const setPart = parts[parts.length - 2];
           const namePart = parts.slice(0, -2).join(' ');
-          card = CARDS.find(
+          card = allCards.find(
             (c) =>
               c.set.toLowerCase().includes(setPart.toLowerCase()) &&
               c.num.startsWith(num) &&
@@ -146,7 +164,7 @@ function ComprarContent() {
         }
       }
       if (!card) {
-        card = CARDS.find((c) =>
+        card = allCards.find((c) =>
           c.name.toLowerCase().includes(rest.toLowerCase()) ||
           rest.toLowerCase().includes(c.name.toLowerCase())
         );
@@ -231,7 +249,7 @@ function ComprarContent() {
                   </div>
                   {mode === 'pick' && (
                     <span style={{ fontSize: 13, color: 'var(--muted)' }}>
-                      {filteredCards.length} cartas
+                      {cardsLoading ? 'Carregando...' : `${filteredCards.length} cartas`}
                     </span>
                   )}
                 </div>
@@ -421,12 +439,21 @@ function ComprarContent() {
                       })}
                     </div>
 
-                    {filteredCards.length === 0 && (
+                    {filteredCards.length === 0 && !cardsLoading && (
                       <div
                         className="card card-pad"
                         style={{ textAlign: 'center', color: 'var(--muted)' }}
                       >
                         Nenhuma carta encontrada. Tente ajustar os filtros.
+                      </div>
+                    )}
+
+                    {cardsLoading && (
+                      <div
+                        className="card card-pad"
+                        style={{ textAlign: 'center', color: 'var(--muted)' }}
+                      >
+                        Carregando cartas da API...
                       </div>
                     )}
                   </>
@@ -599,112 +626,81 @@ function ComprarContent() {
                     letterSpacing: '-0.02em',
                   }}
                 >
-                  <IconCart className="" />
-                  {' '}Seu carrinho
+                  Seu carrinho
                 </h2>
-                <span className="tag tag-gold" style={{ fontSize: 12 }}>
+                <span className="tag tag-neutral mono">
                   {deckCount} itens
                 </span>
               </div>
 
               {deck.length === 0 ? (
-                <div
-                  style={{
-                    padding: '28px 0',
-                    textAlign: 'center',
-                    color: 'var(--muted)',
-                    fontSize: 13,
-                  }}
-                >
-                  Seu carrinho está vazio.
-                  <br />
-                  Adicione cartas ou produtos para começar.
+                <div className="col" style={{ gap: 10, alignItems: 'center', padding: '24px 0' }}>
+                  <span style={{ color: 'var(--muted)', display: 'flex' }}>
+                    <IconCart />
+                  </span>
+                  <span style={{ color: 'var(--muted)', fontSize: 13, textAlign: 'center' }}>
+                    Adicione cartas ou produtos ao carrinho para continuar
+                  </span>
                 </div>
               ) : (
                 <>
-                  {/* Deck lines */}
-                  <div className="col" style={{ gap: 0, marginBottom: 16 }}>
+                  <div className="col gap-6" style={{ maxHeight: 320, overflowY: 'auto', marginBottom: 12 }}>
                     {deck.map((entry) => (
-                      <div key={entry.card.id} className="deckline">
-                        <span
-                          className="mono"
-                          style={{
-                            fontWeight: 700,
-                            fontSize: 13,
-                            color: 'var(--gold-2)',
-                            minWidth: 26,
-                          }}
-                        >
-                          {entry.qty}x
-                        </span>
-                        <div className="grow" style={{ minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontSize: 12.5,
-                              fontWeight: 600,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
+                      <div
+                        key={entry.card.id}
+                        className="row center between"
+                        style={{
+                          padding: '6px 0',
+                          borderBottom: '1px solid var(--border)',
+                        }}
+                      >
+                        <div className="col" style={{ gap: 1, flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                             {entry.card.name}
-                          </div>
-                          <div
-                            className="mono"
-                            style={{ fontSize: 10, color: 'var(--muted)' }}
-                          >
-                            {entry.card.set} {entry.card.num && `· ${entry.card.num}`}
-                          </div>
+                          </span>
+                          <span className="mono" style={{ fontSize: 10, color: 'var(--muted)' }}>
+                            {fmt0(entry.card.base)} × {entry.qty}
+                          </span>
                         </div>
-                        <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
-                          <span
-                            className="mono"
-                            style={{ fontWeight: 700, fontSize: 12.5 }}
-                          >
+                        <div className="row center" style={{ gap: 6 }}>
+                          <span className="mono" style={{ fontWeight: 700, fontSize: 12 }}>
                             {fmt0(entry.card.base * entry.qty)}
                           </span>
-                          <br />
-                          <span
-                            className="mono"
-                            style={{ fontSize: 9.5, color: 'var(--muted)' }}
+                          <button
+                            onClick={() => removeAll(entry.card)}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: 'var(--muted)',
+                              cursor: 'pointer',
+                              padding: 2,
+                              display: 'flex',
+                            }}
                           >
-                            {fmt0(entry.card.base)} un
-                          </span>
+                            <IconTrash />
+                          </button>
                         </div>
-                        <button
-                          className="dqbtn"
-                          onClick={() => removeAll(entry.card)}
-                          title="Remover"
-                        >
-                          <IconTrash className="" />
-                        </button>
                       </div>
                     ))}
                   </div>
 
-                  {/* Total */}
-                  <hr className="divider" style={{ marginBottom: 14 }} />
-                  <div className="row center between" style={{ marginBottom: 16 }}>
+                  <div
+                    className="row between center"
+                    style={{
+                      padding: '10px 0',
+                      borderTop: '2px solid var(--border)',
+                      marginBottom: 16,
+                    }}
+                  >
                     <span style={{ fontWeight: 600, fontSize: 14 }}>Total</span>
-                    <span
-                      className="mono"
-                      style={{ fontWeight: 700, fontSize: 20, color: 'var(--gold-2)' }}
-                    >
-                      {fmt(deckTotal)}
+                    <span className="mono" style={{ fontWeight: 700, fontSize: 16, color: 'var(--gold-2)' }}>
+                      {fmt0(deckTotal)}
                     </span>
                   </div>
 
-                  {/* Actions */}
-                  <div className="col gap-8">
-                    <a href="/otimizador" className="btn btn-violet btn-block btn-lg">
-                      <IconSpark className="" />
-                      Otimizar frete
-                    </a>
-                    <a href="/checkout" className="btn btn-gold btn-block btn-lg">
-                      Ir para checkout
-                      <IconArrow className="" />
-                    </a>
-                  </div>
+                  <a href="/checkout" className="btn btn-gold btn-lg" style={{ width: '100%', textAlign: 'center' }}>
+                    <IconSpark /> Ir para checkout
+                  </a>
                 </>
               )}
             </div>
@@ -718,14 +714,7 @@ function ComprarContent() {
 export default function ComprarPage() {
   return (
     <Suspense fallback={
-      <div className="page">
-        <div className="wrap">
-          <Stepper steps={['Montar carrinho', 'Revisar', 'Checkout']} active={1} />
-          <div className="card card-pad" style={{ textAlign: 'center', padding: '60px 0', color: 'var(--muted)' }}>
-            Carregando...
-          </div>
-        </div>
-      </div>
+      <div className="page"><div className="wrap"><p style={{ color: 'var(--muted)', textAlign: 'center', paddingTop: 40 }}>Carregando...</p></div></div>
     }>
       <ComprarContent />
     </Suspense>

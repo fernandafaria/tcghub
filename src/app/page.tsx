@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { CARDS, WATCH, MOVERS_UP, PRODUCTS, cardById, TCGS } from "@/data";
 import {
@@ -12,6 +12,9 @@ import {
   Sparkline, genSpark, Chip, TagUI, fmt, fmt0,
 } from "@/components/ui";
 import { toast } from "@/components/Toaster";
+import { useApi } from "@/hooks/useApi";
+import { apiCardsToCards, apiCardToCard, cardToMover } from "@/lib/adapters";
+import type { ApiCardsResponse, Card, Mover, Product } from "@/types";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
@@ -61,29 +64,64 @@ export default function Home() {
   const dCount = useMemo(() => deckTotalCards(), []);
   const dMissing = Math.max(0, 60 - dCount);
 
+  // ─── Fetch cards from API ──────────────────────────────────────
+  const { data: apiData, loading: cardsLoading, error: cardsError } =
+    useApi<ApiCardsResponse>("/api/cards?limit=50");
+
+  // Map API cards to frontend Card format
+  const apiCards: Card[] = useMemo(() => {
+    if (!apiData?.cards) return [];
+    return apiCardsToCards(apiData.cards);
+  }, [apiData]);
+
+  // Combine: prefer API data, fall back to mock data
+  const allCards: Card[] = useMemo(() => {
+    if (apiCards.length > 0) return apiCards;
+    return CARDS;
+  }, [apiCards]);
+
   // Card fan — 3 chase cards from the current TCG
   const fanCards = useMemo(() => {
-    const pool = CARDS.filter(
+    const pool = allCards.filter(
       (c) => c.tcg === tcg && (c.foil || c.tags.includes("Chase"))
     );
     if (pool.length < 3) {
-      const fallback = CARDS.filter((c) => c.tcg === tcg);
+      const fallback = allCards.filter((c) => c.tcg === tcg);
+      if (fallback.length < 3) {
+        // Try any cards
+        const any = allCards.length >= 3 ? allCards : [...allCards, ...allCards, ...allCards];
+        return [any[0], any[1], any[2]];
+      }
       return [fallback[3] || fallback[0], fallback[0] || fallback[1], fallback[2] || fallback[0]];
     }
     return [pool[2 % pool.length], pool[0], pool[1 % pool.length]];
-  }, [tcg]);
+  }, [tcg, allCards]);
 
   // Trending cards for "Mais buscadas agora"
   const trending = useMemo(() => {
-    const list = CARDS.filter((c) => c.tcg === tcg);
+    const list = allCards.filter((c) => c.tcg === tcg);
+    if (list.length === 0) {
+      // Fall back to all cards
+      return allCards.slice(0, 8);
+    }
     const withFoil = list.filter((c) => c.foil);
     return (withFoil.length >= 4 ? withFoil : list).slice(0, 8);
-  }, [tcg]);
+  }, [tcg, allCards]);
 
-  // Movers for pulse
-  const pulse = MOVERS_UP.slice(0, 6);
+  // Movers for pulse — use real cards sorted by price as movers if API returns them
+  const pulse = useMemo(() => {
+    if (apiCards.length > 0) {
+      // Sort by price descending and take top 6 as "movers"
+      const sorted = [...apiCards]
+        .filter((c) => c.base > 0)
+        .sort((a, b) => b.base - a.base)
+        .slice(0, 6);
+      return sorted.map((c, i) => cardToMover(c, 5 + i * 3));
+    }
+    return MOVERS_UP.slice(0, 6);
+  }, [apiCards]);
 
-  // Sealed products
+  // Sealed products — use mock data for now (no API endpoint yet)
   const sealedProducts = useMemo(
     () => PRODUCTS.filter((p) => p.cat === "selado").slice(0, 8),
     []
@@ -295,7 +333,7 @@ export default function Home() {
             }}
           >
             {WATCH.slice(0, 6).map((w) => {
-              const c = cardById(w.cardId);
+              const c = allCards.find((x) => x.id === w.cardId) || allCards[0];
               if (!c) return null;
               const sparkData = genSpark(c.id.charCodeAt(0) || 1, c.mo >= 0);
               return (
@@ -466,6 +504,7 @@ export default function Home() {
             >
               {pulse.map((m, i) => {
                 const sparkPoints = genSpark(i + 10, true);
+                const tcgKey = m.tcg || "";
                 return (
                   <div
                     key={i}
@@ -506,20 +545,20 @@ export default function Home() {
                         className="mono"
                         style={{ fontSize: 10.5, color: "var(--muted)" }}
                       >
-                        {m.set} · {TCG_COLORS[m.tcg] ? (
+                        {m.set || ""} · {TCG_COLORS[tcgKey] ? (
                           <span
                             style={{
                               display: "inline-block",
                               width: 7,
                               height: 7,
                               borderRadius: "50%",
-                              background: TCG_COLORS[m.tcg],
+                              background: TCG_COLORS[tcgKey],
                               marginRight: 3,
                               verticalAlign: "middle",
                             }}
                           />
                         ) : null}
-                        {m.tcg}
+                        {tcgKey}
                       </span>
                     </div>
                     <div className="col" style={{ gap: 1, alignItems: "flex-end", flex: "0 0 auto" }}>

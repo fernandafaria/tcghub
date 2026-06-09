@@ -1,598 +1,339 @@
 'use client';
 
 import { useState } from 'react';
+import { apiFetch } from '@/lib/api';
+import { Stepper, TagUI, fmt, fmt0, TrendTag } from '@/components/ui';
+import { IconBrain, IconSpark, IconCheck } from '@/components/icons';
+import type { OptimizationResult, ParsedDeckCard, SellerSlot } from '@/types';
 
-export const dynamic = 'force-dynamic';
-import { Stepper, TagUI, StoreBadge, Stars, fmt, fmt0, TrendTag } from '@/components/ui';
-import {
-  IconBrain, IconSpark, IconShield, IconCheck,
-  IconCart, IconBack,
-} from '@/components/icons';
-import { STORES } from '@/data';
+// ─── Client-side decklist parser (same logic as backend decklist-parser.ts) ───
 
-// Simulated original cart data
-const ORIGINAL_ITEMS = [
-  { cardId: 'c1', qty: 3, name: 'Charizard ex', set: 'Obsidian Flames', num: '125/197', price: 489 },
-  { cardId: 'c2', qty: 2, name: 'Pikachu ex', set: 'Surging Sparks', num: '238/191', price: 312 },
-  { cardId: 'c4', qty: 4, name: 'Gardevoir ex', set: 'Obsidian Flames', num: '086/197', price: 84 },
-  { cardId: 'c3', qty: 1, name: 'Mewtwo VSTAR', set: 'Pokémon GO', num: '031/078', price: 74.9 },
-];
+const LINE_RE = /^(\d+)[x\s]+(.+)$/i;
+const ALT_LINE_RE = /^(.+)\s+[x×](\d+)$/i;
 
-const ORIGINAL_TOTAL = ORIGINAL_ITEMS.reduce((sum, i) => sum + i.price * i.qty, 0);
+function parseDecklist(text: string): ParsedDeckCard[] {
+  const cards: ParsedDeckCard[] = [];
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith('//') || line.startsWith('#')) continue;
+    if (/^[A-Za-z]/.test(line) && !/\d/.test(line.slice(0, 3))) continue;
 
-// Simulated optimized allocation (IA splits across stores for best price)
-const OPTIMIZED_ALLOCATION = [
-  {
-    store: STORES[0],
-    items: [
-      { ...ORIGINAL_ITEMS[0], price: 459.0 }, // Charizard cheaper
-      { ...ORIGINAL_ITEMS[1], price: 299.0 }, // Pikachu cheaper
-    ],
-    shipping: 14.9,
-  },
-  {
-    store: STORES[1],
-    items: [
-      { ...ORIGINAL_ITEMS[2], price: 77.0 }, // Gardevoir cheaper
-      { ...ORIGINAL_ITEMS[3], price: 69.9 }, // Mewtwo cheaper
-    ],
-    shipping: 0,
-  },
-];
+    const m = LINE_RE.exec(line) ?? ALT_LINE_RE.exec(line);
+    if (!m) continue;
 
-const OPTIMIZED_ITEMS_TOTAL = OPTIMIZED_ALLOCATION.reduce(
-  (sum, alloc) => sum + alloc.items.reduce((s, i) => s + i.price * i.qty, 0),
-  0
-);
-const OPTIMIZED_SHIPPING_TOTAL = OPTIMIZED_ALLOCATION.reduce(
-  (sum, alloc) => sum + alloc.shipping,
-  0
-);
-const OPTIMIZED_TOTAL = OPTIMIZED_ITEMS_TOTAL + OPTIMIZED_SHIPPING_TOTAL;
-const SAVINGS = ORIGINAL_TOTAL - OPTIMIZED_TOTAL;
-const SAVINGS_PCT = (SAVINGS / ORIGINAL_TOTAL) * 100;
+    const isAlt = ALT_LINE_RE.exec(line) && !LINE_RE.exec(line);
+    const quantity = isAlt ? parseInt(m[2], 10) : parseInt(m[1], 10);
+    const name = (isAlt ? m[1] : m[2]).trim();
 
-type OptimizeState = 'idle' | 'optimizing' | 'done';
+    if (name && quantity > 0 && quantity <= 99) {
+      cards.push({ name, quantity });
+    }
+  }
+  return cards;
+}
+
+// ─── Slug generator for card names (simple slug → lowercase-kebab) ───
+
+function slugify(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[''""'′'″]/g, '')
+    .replace(/[,.]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+// ─── State types ────────────────────────────────────────────────────────────
+
+type PageState = 'input' | 'optimizing' | 'done' | 'error';
 
 export default function OtimizadorPage() {
-  const [state, setState] = useState<OptimizeState>('idle');
+  // Input
+  const [decklist, setDecklist] = useState('');
+  const [cep, setCep] = useState('');
 
-  const handleOptimize = () => {
-    setState('optimizing');
-    // Simulate AI processing delay
-    setTimeout(() => {
-      setState('done');
-    }, 1800);
+  // State machine
+  const [pageState, setPageState] = useState<PageState>('input');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Results
+  const [result, setResult] = useState<OptimizationResult | null>(null);
+  const [parsedCards, setParsedCards] = useState<ParsedDeckCard[]>([]);
+
+  // ─── Handle optimize ────────────────────────────────────────────────────
+
+  const handleOptimize = async () => {
+    setErrorMsg('');
+
+    // Parse decklist
+    const cards = parseDecklist(decklist);
+    if (cards.length === 0) {
+      setErrorMsg('Nenhuma carta encontrada. Cole sua decklist no formato "4x Nome da Carta".');
+      return;
+    }
+    setParsedCards(cards);
+
+    setPageState('optimizing');
+    setResult(null);
+
+    try {
+      // Build request — using card_name as slug since the backend resolves names
+      const state = cep ? extractStateFromCep(cep) : undefined;
+      const res = await apiFetch<OptimizationResult>('/api/cart-optimizer', {
+        method: 'POST',
+        body: JSON.stringify({
+          items: cards.map(c => ({
+            card_slug: slugify(c.name),
+            card_name: c.name,
+            quantity: c.quantity,
+          })),
+          cep: cep || undefined,
+          state,
+          shipping_method: 'PAC',
+        }),
+      });
+
+      setResult(res);
+      setPageState('done');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Erro ao otimizar carrinho');
+      setPageState('error');
+    }
   };
 
-  const handleApply = () => {
-    // In real app: apply optimized cart to cart state
-    window.location.href = '/checkout';
-  };
+  // ─── Derived values ─────────────────────────────────────────────────────
+
+  const parsedTotal = parsedCards.length;
+  const totalCards = result?.allocatedQuantity ?? parsedTotal;
+  const missingCards = result?.missing ?? [];
+  const incomplete = result?.incomplete ?? false;
+  const totalOriginal = parsedCards.reduce((_, c) => 0, 0); // Original prices unknown
+
+  // ─── Render ──────────────────────────────────────────────────────────────
 
   return (
     <div className="page">
       <div className="wrap">
         {/* Stepper */}
-        <Stepper steps={['Montar carrinho', 'Revisar', 'Checkout']} active={2} />
-
-        {/* Back link */}
-        <a href="/comprar" className="back">
-          <IconBack className="" />
-          Voltar para o carrinho
-        </a>
+        <Stepper steps={['Montar decklist', 'Otimizar', 'Checkout']} active={pageState === 'done' ? 2 : 1} />
 
         {/* Title */}
         <div style={{ marginBottom: 24 }}>
           <div className="row center gap-10" style={{ marginBottom: 4 }}>
             <span style={{ color: 'var(--violet)', display: 'flex' }}>
-              <IconBrain className="" />
+              <IconBrain />
             </span>
-            <h1
-              style={{
-                fontFamily: 'var(--fdisplay)',
-                fontSize: 'clamp(22px, 2.4vw, 28px)',
-                fontWeight: 700,
-                letterSpacing: '-0.02em',
-              }}
-            >
+            <h1 style={{ fontFamily: 'var(--fdisplay)', fontSize: 'clamp(22px, 2.4vw, 28px)', fontWeight: 700, letterSpacing: '-0.02em' }}>
               Otimizador de carrinho
             </h1>
           </div>
           <p style={{ color: 'var(--muted)', fontSize: 14, marginTop: 4, marginLeft: 27 }}>
-            Nossa IA distribui suas cartas entre as melhores lojas para
-            maximizar economia, considerando preço unitário, frete e
-            reputação.
+            Cole sua decklist, cole o CEP e nossa IA distribui suas cartas entre as melhores lojas para maximizar economia.
           </p>
         </div>
 
-        {/* Main content */}
         <div className="row" style={{ alignItems: 'flex-start', gap: 32 }}>
-          {/* Left - Original cart */}
+          {/* Left column */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            {/* Original cart summary */}
-            <div className="card card-pad" style={{ marginBottom: 20 }}>
-              <div className="row center between" style={{ marginBottom: 16 }}>
-                <h2
-                  style={{
-                    fontFamily: 'var(--fdisplay)',
-                    fontSize: 17,
-                    fontWeight: 700,
-                  }}
-                >
-                  <IconCart className="" />
-                  {' '}Carrinho original
-                </h2>
-                <TagUI variant="neutral">
-                  {ORIGINAL_ITEMS.reduce((s, i) => s + i.qty, 0)} cartas
-                </TagUI>
-              </div>
 
-              <div className="col" style={{ gap: 0 }}>
-                {ORIGINAL_ITEMS.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="deckline"
-                    style={{ padding: '10px 0' }}
-                  >
-                    <span
-                      className="mono"
-                      style={{
-                        fontWeight: 700,
-                        fontSize: 13,
-                        color: 'var(--text-2)',
-                        minWidth: 26,
-                      }}
-                    >
-                      {item.qty}x
-                    </span>
-                    <div className="grow" style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>
-                        {item.name}
-                      </div>
-                      <div
-                        className="mono"
-                        style={{ fontSize: 10, color: 'var(--muted)' }}
-                      >
-                        {item.set} · {item.num}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
-                      <span
-                        className="mono"
-                        style={{ fontWeight: 700, fontSize: 13 }}
-                      >
-                        {fmt0(item.price * item.qty)}
-                      </span>
-                      <br />
-                      <span
-                        className="mono"
-                        style={{ fontSize: 9.5, color: 'var(--muted)' }}
-                      >
-                        {fmt0(item.price)} un
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
+            {/* ── INPUT STATE ──────────────────────────────────────────── */}
+            {(pageState === 'input' || pageState === 'error') && (
+              <div className="card card-pad col gap-16" style={{ marginBottom: 20 }}>
+                <label style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)' }}>
+                  Cole sua decklist
+                </label>
+                <textarea
+                  className="field"
+                  rows={12}
+                  placeholder={'4x Charizard ex\n3x Pikachu ex\n2x Gardevoir ex\n1x Mewtwo VSTAR\n\n// Ou cole links:\n// moxfield.com/decks/...\n// limitlesstcg.com/decks/...'}
+                  value={decklist}
+                  onChange={e => setDecklist(e.target.value)}
+                  style={{ fontFamily: 'var(--fmono)', fontSize: 13, lineHeight: 1.6 }}
+                />
 
-              <hr className="divider" style={{ margin: '14px 0' }} />
-
-              <div className="row center between">
-                <span style={{ fontWeight: 600, fontSize: 14 }}>
-                  Total · loja única
-                </span>
-                <div style={{ textAlign: 'right' }}>
-                  <span
-                    className="mono"
-                    style={{ fontWeight: 700, fontSize: 20 }}
-                  >
-                    {fmt(ORIGINAL_TOTAL)}
-                  </span>
-                  <div
-                    className="mono"
-                    style={{ fontSize: 10, color: 'var(--muted)' }}
-                  >
-                    + frete a calcular
+                <div className="row gap-12" style={{ alignItems: 'flex-end' }}>
+                  <div className="col gap-4" style={{ flex: 1 }}>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-2)' }}>
+                      CEP (opcional — para cálculo de frete)
+                    </label>
+                    <input
+                      className="field"
+                      type="text"
+                      placeholder="Ex: 01310-100"
+                      maxLength={9}
+                      value={cep}
+                      onChange={e => setCep(e.target.value.replace(/\D/g, '').slice(0, 8))}
+                    />
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* CTA buttons */}
-            {state === 'idle' && (
-              <button
-                className="btn btn-violet btn-lg btn-block"
-                onClick={handleOptimize}
-                style={{ marginBottom: 20 }}
-              >
-                <IconBrain className="" />
-                Analisar e otimizar com IA
-              </button>
+                {errorMsg && (
+                  <div style={{ padding: '10px 14px', background: 'var(--down-bg)', border: '1px solid var(--down)', borderRadius: 'var(--r-sm)', color: 'var(--down)', fontSize: 13 }}>
+                    {errorMsg}
+                  </div>
+                )}
+
+                <button className="btn btn-violet btn-lg btn-block" onClick={handleOptimize}>
+                  <IconBrain /> Analisar e otimizar com IA
+                </button>
+              </div>
             )}
 
-            {state === 'optimizing' && (
+            {/* ── OPTIMIZING STATE ─────────────────────────────────────── */}
+            {pageState === 'optimizing' && (
               <div className="card card-pad" style={{ textAlign: 'center', marginBottom: 20 }}>
-                <div
-                  style={{
-                    width: 48,
-                    height: 48,
-                    borderRadius: 'var(--r-pill)',
-                    background: 'var(--violet-bg)',
-                    margin: '0 auto 16px',
-                    display: 'grid',
-                    placeItems: 'center',
-                  }}
-                >
-                  <IconBrain className="" />
+                <div style={{ width: 48, height: 48, borderRadius: 'var(--r-pill)', background: 'var(--violet-bg)', margin: '0 auto 16px', display: 'grid', placeItems: 'center' }}>
+                  <IconBrain />
                 </div>
-                <h3
-                  style={{
-                    fontFamily: 'var(--fdisplay)',
-                    fontSize: 18,
-                    fontWeight: 700,
-                    marginBottom: 6,
-                  }}
-                >
-                  Analisando seu carrinho
+                <h3 style={{ fontFamily: 'var(--fdisplay)', fontSize: 18, fontWeight: 700, marginBottom: 6 }}>
+                  Analisando sua decklist
                 </h3>
                 <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-                  Nossa IA está comparando preços entre {STORES.length} lojas,
-                  considerando estoque, frete e reputação...
+                  {parsedCards.length > 0
+                    ? `Comparando preços de ${parsedCards.length} cartas entre lojas verificadas...`
+                    : 'Nossa IA está comparando preços entre lojas, considerando estoque, frete e reputação...'}
                 </p>
-
-                {/* Loading bar */}
                 <div className="bar" style={{ marginTop: 18, maxWidth: 320, marginLeft: 'auto', marginRight: 'auto' }}>
-                  <i
-                    style={{
-                      width: '100%',
-                      background: 'linear-gradient(90deg, var(--violet), var(--violet-2))',
-                      animation: 'loadingbar 1.6s ease-in-out infinite',
-                    }}
-                  />
+                  <i style={{ width: '100%', background: 'linear-gradient(90deg, var(--violet), var(--violet-2))', animation: 'loadingbar 1.6s ease-in-out infinite' }} />
                 </div>
-                <style>{`
-                  @keyframes loadingbar {
-                    0% { width: 0%; }
-                    50% { width: 70%; }
-                    100% { width: 100%; }
-                  }
-                `}</style>
+                <style>{`@keyframes loadingbar { 0% { width: 0%; } 50% { width: 70%; } 100% { width: 100%; } }`}</style>
               </div>
             )}
 
-            {state === 'done' && (
+            {/* ── RESULTS STATE ────────────────────────────────────────── */}
+            {pageState === 'done' && result && (
               <>
-                {/* Results summary banner */}
-                <div
-                  className="card card-pad"
-                  style={{
-                    borderColor: 'var(--up)',
-                    background: 'var(--up-bg)',
-                    marginBottom: 20,
-                    textAlign: 'center',
-                  }}
-                >
-                  <div
-                    style={{
-                      fontFamily: 'var(--fdisplay)',
-                      fontSize: 28,
-                      fontWeight: 800,
-                      color: 'var(--up)',
-                      marginBottom: 4,
-                    }}
-                  >
-                    {fmt(SAVINGS)}
-                  </div>
-                  <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>
-                    de economia encontrada
-                    <span
-                      style={{
-                        marginLeft: 8,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 4,
-                      }}
-                    >
-                      <TrendTag pct={SAVINGS_PCT} />
-                    </span>
-                  </div>
-                  <p style={{ color: 'var(--muted)', fontSize: 12.5 }}>
-                    Distribuindo seu carrinho entre {OPTIMIZED_ALLOCATION.length} lojas
-                    verificadas com o melhor custo-benefício.
-                  </p>
-                </div>
-
-                {/* Per-store breakdown */}
-                <div className="col gap-16" style={{ marginBottom: 20 }}>
-                  {OPTIMIZED_ALLOCATION.map((alloc, idx) => (
-                    <div key={idx} className="card card-pad">
-                      <div
-                        className="row center between"
-                        style={{ marginBottom: 12 }}
-                      >
-                        <div>
-                          <StoreBadge
-                            name={alloc.store.name}
-                            verified={alloc.store.verified}
-                          />
-                          <div className="row center gap-8" style={{ marginTop: 3 }}>
-                            <Stars rating={alloc.store.rating} />
-                            <span
-                              className="mono"
-                              style={{ fontSize: 10, color: 'var(--muted)' }}
-                            >
-                              {alloc.store.sales} vendas
-                            </span>
-                          </div>
-                        </div>
-                        <TagUI variant="violet">
-                          <IconCheck className="" />
-                          IA sugere
-                        </TagUI>
-                      </div>
-
-                      <div className="col" style={{ gap: 0 }}>
-                        {alloc.items.map((item, j) => (
-                          <div
-                            key={j}
-                            className="deckline"
-                            style={{ padding: '8px 0' }}
-                          >
-                            <span
-                              className="mono"
-                              style={{
-                                fontWeight: 700,
-                                fontSize: 13,
-                                color: 'var(--violet-2)',
-                                minWidth: 26,
-                              }}
-                            >
-                              {item.qty}x
-                            </span>
-                            <div className="grow" style={{ minWidth: 0 }}>
-                              <div
-                                className="row center gap-6"
-                                style={{ fontSize: 13, fontWeight: 600 }}
-                              >
-                                {item.name}
-                                {item.price < ORIGINAL_ITEMS.find(
-                                  (o) => o.cardId === item.cardId
-                                )!.price && (
-                                  <span
-                                    style={{
-                                      fontSize: 10.5,
-                                      color: 'var(--up)',
-                                      fontWeight: 600,
-                                    }}
-                                  >
-                                    -{fmt0(
-                                      ORIGINAL_ITEMS.find(
-                                        (o) => o.cardId === item.cardId
-                                      )!.price - item.price
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <span
-                              className="mono"
-                              style={{ fontWeight: 700, fontSize: 13 }}
-                            >
-                              {fmt0(item.price * item.qty)}
-                            </span>
+                {/* Status banner */}
+                {result.sellers.length > 0 && (
+                  <div className="card card-pad" style={{ borderColor: incomplete ? 'var(--gold-bd)' : 'var(--up)', background: incomplete ? 'var(--gold-bg)' : 'var(--up-bg)', marginBottom: 20, textAlign: 'center' }}>
+                    <div style={{ fontFamily: 'var(--fdisplay)', fontSize: 28, fontWeight: 800, color: incomplete ? 'var(--gold-2)' : 'var(--up)', marginBottom: 4 }}>
+                      {fmt(result.totalBrl)}
+                    </div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>
+                      {incomplete ? 'Melhor preço parcial encontrado' : 'Melhor preço encontrado'}
+                    </div>
+                    <p style={{ color: 'var(--muted)', fontSize: 12.5 }}>
+                      {result.allocatedQuantity} de {result.requiredQuantity} cartas alocadas
+                      {result.sellers.length > 1 ? ` · distribuído em ${result.sellers.length} lojas` : ' · 1 loja'}
+                    </p>
+                    {result.warnings && result.warnings.length > 0 && (
+                      <div className="col gap-4" style={{ marginTop: 12, textAlign: 'left' }}>
+                        {result.warnings.map((w, i) => (
+                          <div key={i} style={{ padding: '8px 12px', background: 'var(--down-bg)', border: '1px solid var(--down)', borderRadius: 'var(--r-xs)', fontSize: 11.5, color: 'var(--down)' }}>
+                            ⚠ {w}
                           </div>
                         ))}
                       </div>
-
-                      <hr className="divider" style={{ margin: '10px 0' }} />
-                      <div className="row center between">
-                        <span style={{ fontSize: 12.5, color: 'var(--text-2)' }}>
-                          Subtotal + frete
-                        </span>
-                        <span className="mono" style={{ fontWeight: 700, fontSize: 14 }}>
-                          {fmt(
-                            alloc.items.reduce((s, i) => s + i.price * i.qty, 0) +
-                              alloc.shipping
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  className="btn btn-gold btn-lg btn-block"
-                  onClick={handleApply}
-                >
-                  <IconCheck className="" />
-                  Aplicar otimização e ir para checkout
-                </button>
-              </>
-            )}
-          </div>
-
-          {/* Right sidebar - Summary */}
-          <div
-            style={{
-              width: 340,
-              flex: '0 0 340px',
-              position: 'sticky',
-              top: 'calc(var(--nav-h) + 20px)',
-              alignSelf: 'flex-start',
-            }}
-          >
-            <div className="card card-pad">
-              <h2
-                style={{
-                  fontFamily: 'var(--fdisplay)',
-                  fontSize: 19,
-                  fontWeight: 700,
-                  letterSpacing: '-0.02em',
-                  marginBottom: 16,
-                }}
-              >
-                <IconSpark className="" />
-                {' '}Resumo da otimização
-              </h2>
-
-              {state === 'idle' && (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    padding: '28px 0',
-                    color: 'var(--muted)',
-                    fontSize: 13,
-                  }}
-                >
-                  <IconBrain className="" />
-                  <br />
-                  Clique em &ldquo;Analisar e otimizar&rdquo;
-                  para ver os resultados.
-                </div>
-              )}
-
-              {state === 'optimizing' && (
-                <div
-                  style={{
-                    textAlign: 'center',
-                    padding: '28px 0',
-                    color: 'var(--muted)',
-                    fontSize: 13,
-                  }}
-                >
-                  <IconSpark className="" />
-                  <br />
-                  Analisando...
-                </div>
-              )}
-
-              {state === 'done' && (
-                <>
-                  <div className="col gap-10" style={{ marginBottom: 16 }}>
-                    <div className="row center between">
-                      <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
-                        Original
-                      </span>
-                      <span className="mono" style={{ fontWeight: 600, fontSize: 14 }}>
-                        {fmt(ORIGINAL_TOTAL)}
-                      </span>
-                    </div>
-                    <div className="row center between">
-                      <span style={{ fontSize: 13, color: 'var(--text-2)' }}>
-                        Otimizado
-                      </span>
-                      <span
-                        className="mono"
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 16,
-                          color: 'var(--violet-2)',
-                        }}
-                      >
-                        {fmt(OPTIMIZED_TOTAL)}
-                      </span>
-                    </div>
-                    <div
-                      className="row center between"
-                      style={{
-                        padding: '8px 10px',
-                        background: 'var(--up-bg)',
-                        borderRadius: 'var(--r-xs)',
-                      }}
-                    >
-                      <span style={{ fontSize: 13, color: 'var(--up)', fontWeight: 600 }}>
-                        Economia
-                      </span>
-                      <span
-                        className="mono"
-                        style={{
-                          fontWeight: 700,
-                          fontSize: 16,
-                          color: 'var(--up)',
-                        }}
-                      >
-                        {fmt(SAVINGS)}
-                      </span>
-                    </div>
+                    )}
                   </div>
+                )}
 
-                  <hr className="divider" style={{ marginBottom: 14 }} />
+                {/* No sellers found */}
+                {result.sellers.length === 0 && (
+                  <div className="card card-pad" style={{ textAlign: 'center', marginBottom: 20, borderColor: 'var(--down)', background: 'var(--down-bg)' }}>
+                    <p style={{ color: 'var(--down)', fontSize: 14, fontWeight: 600 }}>Nenhuma loja encontrada com estoque para essas cartas.</p>
+                    <p style={{ color: 'var(--muted)', fontSize: 12.5, marginTop: 4 }}>Tente novamente mais tarde ou ajuste sua decklist.</p>
+                  </div>
+                )}
 
-                  <div style={{ marginBottom: 14 }}>
-                    <h3
-                      style={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        color: 'var(--muted)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.05em',
-                        marginBottom: 8,
-                      }}
-                    >
-                      Lojas selecionadas
+                {/* Per-store breakdown */}
+                {result.sellers.length > 0 && (
+                  <div className="col gap-16" style={{ marginBottom: 20 }}>
+                    {result.sellers.map((seller, idx) => (
+                      <SellerCard key={idx} seller={seller} idx={idx} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Missing cards */}
+                {missingCards.length > 0 && (
+                  <div className="card card-pad" style={{ marginBottom: 20, borderColor: 'var(--gold-bd)', background: 'var(--gold-bg)' }}>
+                    <h3 style={{ fontFamily: 'var(--fdisplay)', fontSize: 15, fontWeight: 700, marginBottom: 10 }}>
+                      Cartas não encontradas
                     </h3>
-                    <div className="col gap-8">
-                      {OPTIMIZED_ALLOCATION.map((alloc, idx) => (
-                        <div
-                          key={idx}
-                          className="row center gap-8"
-                          style={{
-                            padding: '8px 10px',
-                            background: 'var(--surface)',
-                            borderRadius: 'var(--r-xs)',
-                            border: '1px solid var(--border)',
-                          }}
-                        >
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div
-                              style={{
-                                fontSize: 12,
-                                fontWeight: 600,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
-                              {alloc.store.name}
-                            </div>
-                            <Stars rating={alloc.store.rating} />
-                          </div>
-                          <span
-                            className="mono"
-                            style={{ fontWeight: 700, fontSize: 12 }}
-                          >
-                            {fmt0(
-                              alloc.items.reduce((s, i) => s + i.price * i.qty, 0) +
-                                alloc.shipping
-                            )}
+                    <div className="col gap-4">
+                      {missingCards.map((m, i) => (
+                        <div key={i} className="row between" style={{ fontSize: 13 }}>
+                          <span style={{ color: 'var(--text-2)' }}>{m.cardSlug}</span>
+                          <span className="mono" style={{ color: 'var(--muted)' }}>
+                            {m.quantity}x indisponível
                           </span>
                         </div>
                       ))}
                     </div>
                   </div>
+                )}
 
-                  <div
-                    className="card-pad"
-                    style={{
-                      background: 'var(--teal-bg)',
-                      border: '1px solid var(--teal-bd)',
-                      borderRadius: 'var(--r-md)',
-                      padding: '12px 14px',
-                    }}
-                  >
-                    <div className="row center gap-8" style={{ marginBottom: 4 }}>
-                      <IconShield className="" />
-                      <span style={{ fontSize: 12.5, fontWeight: 600 }}>
-                        Compra protegida em todas as lojas
-                      </span>
-                    </div>
-                    <p style={{ fontSize: 11, color: 'var(--text-2)' }}>
-                      Cada pedido tem escrow independente. Você só paga
-                      quando a loja despachar.
-                    </p>
+                {/* Reset button */}
+                <button className="btn btn-ghost btn-lg" onClick={() => { setPageState('input'); setResult(null); setParsedCards([]); }}>
+                  ← Nova decklist
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* Right sidebar */}
+          <div style={{ width: 340, flex: '0 0 340px', position: 'sticky', top: 'calc(var(--nav-h) + 20px)', alignSelf: 'flex-start' }}>
+            <div className="card card-pad">
+              <h2 style={{ fontFamily: 'var(--fdisplay)', fontSize: 19, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>
+                <IconSpark /> Resumo da otimização
+              </h2>
+
+              {pageState === 'input' && (
+                <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--muted)', fontSize: 13 }}>
+                  <IconBrain />
+                  <br />
+                  Cole sua decklist e clique em otimizar.
+                </div>
+              )}
+
+              {pageState === 'optimizing' && (
+                <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--muted)', fontSize: 13 }}>
+                  <IconSpark />
+                  <br />
+                  Analisando...
+                </div>
+              )}
+
+              {pageState === 'done' && result && (
+                <div className="col gap-10">
+                  <div className="row between">
+                    <span style={{ fontSize: 13, color: 'var(--text-2)' }}>Cartas na lista</span>
+                    <span className="mono" style={{ fontWeight: 600, fontSize: 14 }}>{parsedTotal}</span>
                   </div>
-                </>
+                  <div className="row between">
+                    <span style={{ fontSize: 13, color: 'var(--text-2)' }}>Cartas alocadas</span>
+                    <span className="mono" style={{ fontWeight: 600, fontSize: 14, color: result.allocatedQuantity === result.requiredQuantity ? 'var(--up)' : 'var(--gold-2)' }}>
+                      {result.allocatedQuantity}/{result.requiredQuantity}
+                    </span>
+                  </div>
+                  <div className="row between">
+                    <span style={{ fontSize: 13, color: 'var(--text-2)' }}>Subtotal</span>
+                    <span className="mono" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(result.subtotalBrl)}</span>
+                  </div>
+                  <div className="row between">
+                    <span style={{ fontSize: 13, color: 'var(--text-2)' }}>Frete</span>
+                    <span className="mono" style={{ fontWeight: 600, fontSize: 14 }}>{fmt(result.shippingBrl)}</span>
+                  </div>
+                  <hr className="divider" />
+                  <div className="row between" style={{ padding: '8px 10px', background: 'var(--violet-bg)', borderRadius: 'var(--r-sm)' }}>
+                    <span style={{ fontWeight: 700, fontSize: 15, color: 'var(--violet-2)' }}>Total</span>
+                    <span className="mono" style={{ fontWeight: 700, fontSize: 18, color: 'var(--violet-2)' }}>{fmt(result.totalBrl)}</span>
+                  </div>
+                  {result.combinationsEvaluated > 0 && (
+                    <div style={{ fontSize: 10.5, color: 'var(--faint)', textAlign: 'center', marginTop: 4 }}>
+                      {result.combinationsEvaluated} combinações avaliadas
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {pageState === 'error' && (
+                <div style={{ textAlign: 'center', padding: '28px 0', color: 'var(--down)', fontSize: 13 }}>
+                  Erro ao carregar. Tente novamente.
+                </div>
               )}
             </div>
           </div>
@@ -600,4 +341,98 @@ export default function OtimizadorPage() {
       </div>
     </div>
   );
+}
+
+// ─── Seller card sub-component ──────────────────────────────────────────────
+
+function SellerCard({ seller, idx }: { seller: SellerSlot; idx: number }) {
+  return (
+    <div className="card card-pad">
+      <div className="row between" style={{ marginBottom: 12 }}>
+        <div className="col gap-2">
+          <div className="row center gap-6">
+            <span style={{ fontWeight: 600, fontSize: 14 }}>{seller.displayName}</span>
+            {seller.isVerified && (
+              <span style={{ color: 'var(--teal)', display: 'flex' }}><IconCheck /></span>
+            )}
+          </div>
+          {seller.trustLevel && (
+            <span className="tag tag-neutral" style={{ fontSize: 10 }}>
+              {trustLabel(seller.trustLevel)}
+            </span>
+          )}
+        </div>
+        <TagUI variant="violet">
+          <IconCheck /> IA sugere
+        </TagUI>
+      </div>
+
+      <div className="col" style={{ gap: 0 }}>
+        {seller.items.map((item, j) => (
+          <div key={j} className="deckline" style={{ padding: '8px 0' }}>
+            <span className="mono" style={{ fontWeight: 700, fontSize: 13, color: 'var(--violet-2)', minWidth: 26 }}>
+              {item.quantity}x
+            </span>
+            <div className="grow" style={{ minWidth: 0 }}>
+              <div className="row center gap-6" style={{ fontSize: 13, fontWeight: 600 }}>
+                {item.cardName || item.cardSlug}
+                {item.anomalous && (
+                  <span style={{ fontSize: 10, color: 'var(--down)' }}>⚠ preço suspeito</span>
+                )}
+              </div>
+              <div className="mono" style={{ fontSize: 10, color: 'var(--muted)' }}>
+                {item.condition} {item.isFoil ? '· Foil' : ''}
+              </div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span className="mono" style={{ fontWeight: 700, fontSize: 13 }}>
+                {fmt0(item.unitPriceBrl * item.quantity)}
+              </span>
+              <br />
+              <span className="mono" style={{ fontSize: 9.5, color: 'var(--muted)' }}>
+                {fmt0(item.unitPriceBrl)} un
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <hr className="divider" style={{ margin: '10px 0' }} />
+      <div className="row between">
+        <span style={{ fontSize: 12.5, color: 'var(--text-2)' }}>Subtotal + frete</span>
+        <span className="mono" style={{ fontWeight: 700, fontSize: 14 }}>
+          {fmt(seller.subtotalBrl + seller.shippingBrl)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function trustLabel(level: string): string {
+  const map: Record<string, string> = {
+    alta: '🏆 Confiança alta',
+    confiavel: '✅ Confiável',
+    moderada: '⚠ Moderada',
+    novo: '🆕 Novo vendedor',
+  };
+  return map[level] || level;
+}
+
+function extractStateFromCep(cep: string): string | undefined {
+  // Simple CEP → state mapping (first digit range)
+  const n = parseInt(cep.charAt(0));
+  if (isNaN(n)) return undefined;
+  if (n === 0) return 'SP';
+  if (n === 1) return 'SP';
+  if (n === 2) return 'RJ';
+  if (n === 3) return 'MG';
+  if (n === 4) return 'BA';
+  if (n === 5) return 'PE';
+  if (n === 6) return 'CE';
+  if (n === 7) return 'DF';
+  if (n === 8) return 'PR';
+  if (n === 9) return 'RS';
+  return undefined;
 }
