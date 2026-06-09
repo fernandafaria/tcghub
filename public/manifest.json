@@ -1,0 +1,17 @@
+{
+  "name": "TCGHub — Jogar, colecionar e investir em cartas",
+  "short_name": "TCGHub",
+  "description": "Compare preços entre lojas verificadas, monte decks e acompanhe sua coleção de cartas TCG.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1225",
+  "theme_color": "#1a1225",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["shopping", "entertainment", "lifestyle"],
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "scope": "/"
+}

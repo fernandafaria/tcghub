@@ -1,65 +1,656 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useMemo } from "react";
+import Link from "next/link";
+import { CARDS, WATCH, MOVERS_UP, PRODUCTS, cardById, TCGS } from "@/data";
+import {
+  IconSearch, IconCart, IconSpark, IconBell, IconChart, IconArrow,
+  IconCards, IconPkg, IconLayers, IconGrid, IconStar, IconBrain, IconUp,
+} from "@/components/icons";
+import {
+  CardFan, GameCard, CardTile, ProductTile, SectionHead, TrendTag,
+  Sparkline, genSpark, Chip, TagUI, fmt, fmt0,
+} from "@/components/ui";
+import { toast } from "@/components/Toaster";
+
+// ─── Helpers ───────────────────────────────────────────────────────────────
+
+const CATEGORY_CHIPS = [
+  ["Cartas avulsas", "cards", "avulsas"] as const,
+  ["Produtos selados", "pkg", "selado"] as const,
+  ["Decks prontos", "layers", "deck"] as const,
+  ["Acessórios", "grid", "acessorio"] as const,
+  ["Cartas graded", "star", "graded"] as const,
+];
+
+const CAT_ICONS: Record<string, React.FC<{ className?: string }>> = {
+  cards: IconCards,
+  pkg: IconPkg,
+  layers: IconLayers,
+  grid: IconGrid,
+  star: IconStar,
+};
+
+function deckTotalCards(): number {
+  if (typeof window === "undefined") return 0;
+  try {
+    const raw = localStorage.getItem("tcghub-deck");
+    if (!raw) return 0;
+    const deck: { quantity: number }[] = JSON.parse(raw);
+    return deck.reduce((sum, d) => sum + (d.quantity || 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
+// ─── Vibrant color per TCG for movers ──────────────────────────────────────
+
+const TCG_COLORS: Record<string, string> = {
+  PKM: "#f2c94c",
+  MTG: "#e0853f",
+  YGO: "#b46fd6",
+  OP: "#e0563f",
+  LOR: "#3d9be0",
+};
+
+// ─── HOME PAGE ─────────────────────────────────────────────────────────────
 
 export default function Home() {
+  const [tcg, setTcg] = useState("pokemon");
+  const [searchQuery, setSearchQuery] = useState("");
+  const dCount = useMemo(() => deckTotalCards(), []);
+  const dMissing = Math.max(0, 60 - dCount);
+
+  // Card fan — 3 chase cards from the current TCG
+  const fanCards = useMemo(() => {
+    const pool = CARDS.filter(
+      (c) => c.tcg === tcg && (c.foil || c.tags.includes("Chase"))
+    );
+    if (pool.length < 3) {
+      const fallback = CARDS.filter((c) => c.tcg === tcg);
+      return [fallback[3] || fallback[0], fallback[0] || fallback[1], fallback[2] || fallback[0]];
+    }
+    return [pool[2 % pool.length], pool[0], pool[1 % pool.length]];
+  }, [tcg]);
+
+  // Trending cards for "Mais buscadas agora"
+  const trending = useMemo(() => {
+    const list = CARDS.filter((c) => c.tcg === tcg);
+    const withFoil = list.filter((c) => c.foil);
+    return (withFoil.length >= 4 ? withFoil : list).slice(0, 8);
+  }, [tcg]);
+
+  // Movers for pulse
+  const pulse = MOVERS_UP.slice(0, 6);
+
+  // Sealed products
+  const sealedProducts = useMemo(
+    () => PRODUCTS.filter((p) => p.cat === "selado").slice(0, 8),
+    []
+  );
+
+  const handleWatchAlert = (cardName: string) => {
+    toast(`Alerta criado para ${cardName}!`);
+  };
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      toast(`Buscando "${searchQuery.trim()}"...`);
+    }
+  };
+
+  const handleCategoryClick = (cat: string) => {
+    window.location.href = `/comprar?cat=${cat}`;
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <div className="page">
+      <div className="wrap">
+        {/* ════════════════ HERO ════════════════ */}
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.05fr 0.95fr",
+            gap: 40,
+            alignItems: "center",
+            padding: "20px 0 8px",
+          }}
+        >
+          {/* LEFT */}
+          <div style={{ maxWidth: 600 }}>
+            <div className="eyebrow" style={{ marginBottom: 16 }}>
+              Pokémon · Magic · Yu-Gi-Oh! · One Piece · Lorcana
+            </div>
+            <h1
+              style={{
+                fontFamily: "var(--fdisplay)",
+                fontSize: "clamp(32px, 4.8vw, 54px)",
+                fontWeight: 800,
+                letterSpacing: "-0.035em",
+                lineHeight: 1.0,
+              }}
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              <span className="holo-text">Jogar, colecionar e investir</span>{" "}
+              em cartas.
+            </h1>
+            <p
+              style={{
+                fontSize: 17,
+                color: "var(--text-2)",
+                marginTop: 18,
+                maxWidth: 510,
+                lineHeight: 1.5,
+              }}
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+              Compare preços entre lojas verificadas, receba alertas de
+              valorização e compre protegido — do primeiro booster ao slab PSA
+              10.
+            </p>
+
+            {/* Search bar */}
+            <div
+              className="card"
+              style={{
+                marginTop: 24,
+                padding: "8px 8px 8px 18px",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                borderRadius: "var(--r-pill)",
+                maxWidth: 560,
+              }}
+            >
+              <span style={{ color: "var(--muted)", display: "inline-flex" }}>
+                <IconSearch />
+              </span>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                placeholder="Buscar carta, produto, ou colar um deck…"
+                style={{
+                  flex: 1,
+                  background: "none",
+                  border: "none",
+                  color: "var(--text)",
+                  fontSize: "15.5px",
+                  outline: "none",
+                }}
+              />
+              <button className="btn btn-gold" onClick={handleSearch}>
+                Buscar
+              </button>
+            </div>
+
+            {/* Category chips */}
+            <div className="row gap-8 wrapf" style={{ marginTop: 16 }}>
+              {CATEGORY_CHIPS.map(([label, ic, cat]) => {
+                const IconComp = CAT_ICONS[ic];
+                return (
+                  <button
+                    key={cat}
+                    className="chip"
+                    onClick={() => handleCategoryClick(cat)}
+                  >
+                    {IconComp && <IconComp className="ic" />}
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* RIGHT: Card Fan */}
+          <CardFan
+            left={fanCards[0]}
+            mid={fanCards[1]}
+            right={fanCards[2]}
+          />
+        </section>
+
+        {/* ════════════════ SEU DECK ════════════════ */}
+        <section style={{ margin: "34px 0 30px" }}>
+          <div
+            className="card card-pad row between center wrapf"
+            style={{
+              gap: 18,
+              borderColor: "var(--gold-bd)",
+              background:
+                "linear-gradient(120deg, var(--gold-bg), transparent 70%)",
+            }}
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+            {dCount > 0 ? (
+              <>
+                <div className="row center" style={{ gap: 14 }}>
+                  <span
+                    style={{
+                      color: "var(--gold-2)",
+                      display: "inline-flex",
+                    }}
+                  >
+                    <IconCards />
+                  </span>
+                  <div className="col" style={{ gap: 2 }}>
+                    <span style={{ fontWeight: 600, fontSize: 15 }}>
+                      Seu deck em montagem ·{" "}
+                      <span className="mono">{dCount}</span> cartas
+                    </span>
+                    <span style={{ fontSize: 13, color: "var(--text-2)" }}>
+                      Faltam <b className="mono">{dMissing}</b> pro padrão de
+                      60. Sugestão: +2 <b>Iono</b> deixa mais consistente.
+                    </span>
+                  </div>
+                </div>
+                <div className="row" style={{ gap: 8 }}>
+                  <Link href="/comprar" className="btn btn-ghost">
+                    Continuar montando
+                  </Link>
+                  <Link href="/comprar?optimize=1" className="btn btn-gold">
+                    Otimizar frete <IconArrow />
+                  </Link>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="row center" style={{ gap: 14 }}>
+                  <span
+                    style={{
+                      color: "var(--gold-2)",
+                      display: "inline-flex",
+                    }}
+                  >
+                    <IconCards />
+                  </span>
+                  <div className="col" style={{ gap: 2 }}>
+                    <span style={{ fontWeight: 600, fontSize: 15 }}>
+                      Tem um deck em mente?
+                    </span>
+                    <span style={{ fontSize: 13, color: "var(--text-2)" }}>
+                      Monte carta a carta ou cole a lista — a gente acha o
+                      frete mínimo e o que falta.
+                    </span>
+                  </div>
+                </div>
+                <Link href="/comprar" className="btn btn-gold">
+                  <IconSpark /> Montar meu deck
+                </Link>
+              </>
+            )}
+          </div>
+        </section>
+
+        {/* ════════════════ COMPRE AGORA · TENDE A VALORIZAR ════════════════ */}
+        <section style={{ marginBottom: 48 }}>
+          <SectionHead
+            title="Compre agora · tende a valorizar"
+            subtitle="Alertas de preço com o porquê — não é palpite de YouTube"
+            moreLabel="Ver mercado"
+            moreHref="/mercado"
+          />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 18,
+            }}
           >
-            Documentation
-          </a>
-        </div>
-      </main>
+            {WATCH.slice(0, 6).map((w) => {
+              const c = cardById(w.cardId);
+              if (!c) return null;
+              const sparkData = genSpark(c.id.charCodeAt(0) || 1, c.mo >= 0);
+              return (
+                <div
+                  key={w.cardId}
+                  className="card card-pad col"
+                  style={{
+                    gap: 12,
+                    borderColor: "var(--violet-bd)",
+                  }}
+                >
+                  <div className="row between center">
+                    <span className="tag tag-violet">
+                      <IconBell /> {w.conf}
+                    </span>
+                    <TrendTag pct={c.mo} sm />
+                  </div>
+                  <Link
+                    href={`/carta/${c.id}`}
+                    className="row center"
+                    style={{ gap: 12, textDecoration: "none", color: "inherit" }}
+                  >
+                    <div
+                      className={`cardimg ${c.art} ${c.foil ? "foil" : ""}`}
+                      style={{
+                        width: 52,
+                        aspectRatio: "2.5/3.5",
+                        borderRadius: 7,
+                        flex: "0 0 auto",
+                      }}
+                    >
+                      <div className="shine" />
+                    </div>
+                    <div
+                      className="col grow"
+                      style={{ gap: 2, minWidth: 0 }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 600,
+                          fontSize: 14,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {c.name}
+                      </span>
+                      <span
+                        className="mono"
+                        style={{ fontSize: "11.5px", color: "var(--muted)" }}
+                      >
+                        {c.set} · {fmt0(c.base)}
+                      </span>
+                    </div>
+                  </Link>
+                  <p
+                    style={{
+                      fontSize: "12.5px",
+                      color: "var(--text-2)",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {w.reason}
+                  </p>
+                  <div className="row" style={{ gap: 8 }}>
+                    <Link
+                      href={`/carta/${c.id}`}
+                      className="btn btn-gold btn-sm grow"
+                    >
+                      Ver ofertas
+                    </Link>
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => handleWatchAlert(c.name)}
+                    >
+                      <IconBell /> Alerta
+                    </button>
+                  </div>
+                  {/* Sparkline mini */}
+                  <div
+                    className="col"
+                    style={{
+                      gap: 6,
+                      padding: "8px 10px",
+                      background: "var(--bg-2)",
+                      borderRadius: "var(--r-xs)",
+                    }}
+                  >
+                    <Sparkline
+                      points={sparkData}
+                      color={
+                        c.mo >= 0 ? "var(--up)" : "var(--down)"
+                      }
+                      width={120}
+                      height={28}
+                    />
+                    <div className="row between center">
+                      <span
+                        className="mono"
+                        style={{ fontSize: 10, color: "var(--muted)" }}
+                      >
+                        30 dias
+                      </span>
+                      <span
+                        className="mono"
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: c.mo >= 0 ? "var(--up)" : "var(--down)",
+                        }}
+                      >
+                        {c.mo >= 0 ? "+" : ""}
+                        {c.mo.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* ════════════════ PULSO DO MERCADO ════════════════ */}
+        <section style={{ marginBottom: 48 }}>
+          <div
+            className="card card-pad"
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
+            <div className="row between center">
+              <div className="row center" style={{ gap: 10 }}>
+                <span className="tag tag-violet">
+                  <IconChart /> Pulso do mercado
+                </span>
+                <span
+                  style={{ fontSize: 13, color: "var(--text-2)" }}
+                >
+                  Maiores altas da semana
+                </span>
+              </div>
+              <Link
+                href="/mercado"
+                className="more"
+                style={{
+                  color: "var(--gold-2)",
+                  fontSize: "13.5px",
+                  fontWeight: 600,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  textDecoration: "none",
+                }}
+              >
+                Ver tudo <IconArrow />
+              </Link>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+                gap: 12,
+              }}
+            >
+              {pulse.map((m, i) => {
+                const sparkPoints = genSpark(i + 10, true);
+                return (
+                  <div
+                    key={i}
+                    className="row center"
+                    style={{
+                      gap: 12,
+                      padding: "12px 14px",
+                      background: "var(--surface)",
+                      borderRadius: "var(--r-sm)",
+                      minWidth: 0,
+                    }}
+                  >
+                    {/* Sparkline */}
+                    <div style={{ flex: "0 0 auto" }}>
+                      <Sparkline
+                        points={sparkPoints}
+                        color="var(--up)"
+                        width={74}
+                        height={28}
+                      />
+                    </div>
+                    <div
+                      className="col grow"
+                      style={{ gap: 2, minWidth: 0 }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}
+                      >
+                        {m.name}
+                      </span>
+                      <span
+                        className="mono"
+                        style={{ fontSize: 10.5, color: "var(--muted)" }}
+                      >
+                        {m.set} · {TCG_COLORS[m.tcg] ? (
+                          <span
+                            style={{
+                              display: "inline-block",
+                              width: 7,
+                              height: 7,
+                              borderRadius: "50%",
+                              background: TCG_COLORS[m.tcg],
+                              marginRight: 3,
+                              verticalAlign: "middle",
+                            }}
+                          />
+                        ) : null}
+                        {m.tcg}
+                      </span>
+                    </div>
+                    <div className="col" style={{ gap: 1, alignItems: "flex-end", flex: "0 0 auto" }}>
+                      <span className="tag tag-up" style={{ fontSize: 11, padding: "2px 7px" }}>
+                        <IconUp /> +{m.pct.toFixed(1)}%
+                      </span>
+                      <span
+                        className="mono"
+                        style={{ fontSize: 11, color: "var(--muted)" }}
+                      >
+                        {fmt0(m.val)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+
+        {/* ════════════════ MAIS BUSCADAS AGORA ════════════════ */}
+        <section style={{ marginBottom: 48 }}>
+          <SectionHead
+            title="Mais buscadas agora"
+            subtitle={`O que o pessoal está procurando em ${TCGS.find((t) => t.id === tcg)?.name || "Pokémon"}`}
+            moreLabel="Ver tudo"
+            moreHref="/comprar"
+          />
+
+          {/* TCG Switcher chips */}
+          <div className="tcgbar" style={{ marginBottom: 24 }}>
+            {TCGS.map((t) => (
+              <Chip
+                key={t.id}
+                active={tcg === t.id}
+                onClick={() => setTcg(t.id)}
+              >
+                {t.name}
+              </Chip>
+            ))}
+          </div>
+
+          {/* Card grid */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: 20,
+            }}
+          >
+            {trending.map((c) => (
+              <Link
+                key={c.id}
+                href={`/carta/${c.id}`}
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
+                <CardTile card={c} />
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* ════════════════ PRODUTOS SELADOS ════════════════ */}
+        <section style={{ marginBottom: 48 }}>
+          <SectionHead
+            title="Produtos selados"
+            subtitle="Boxes, ETBs e coleções lacradas"
+            moreLabel="Ver todos"
+            moreHref="/comprar?cat=selado"
+          />
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: 20,
+            }}
+          >
+            {sealedProducts.map((p) => (
+              <Link
+                key={p.id}
+                href={`/comprar?cat=selado`}
+                style={{ textDecoration: "none", color: "inherit" }}
+              >
+                <ProductTile
+                  product={p}
+                  offers={3}
+                />
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        {/* ════════════════ PARA LOJISTAS ════════════════ */}
+        <section style={{ marginBottom: 48 }}>
+          <div
+            className="card card-pad row between center wrapf"
+            style={{
+              gap: 24,
+              background:
+                "linear-gradient(120deg, var(--teal-bg) 0%, transparent 55%)",
+              borderColor: "var(--teal-bd)",
+            }}
+          >
+            <div className="col" style={{ gap: 6 }}>
+              <span
+                style={{
+                  fontFamily: "var(--fdisplay)",
+                  fontSize: 22,
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                Tem uma loja de TCG?
+              </span>
+              <p style={{ fontSize: 14, color: "var(--text-2)", maxWidth: 480, lineHeight: 1.5 }}>
+                Anuncie seu estoque, receba pedidos com compra protegida e
+                precifique automaticamente. Sem mensalidade — você só paga
+                quando vende.
+              </p>
+            </div>
+            <Link
+              href="/lojista"
+              className="btn btn-teal btn-lg"
+              style={{ whiteSpace: "nowrap" }}
+            >
+              Tenho uma loja <IconArrow />
+            </Link>
+          </div>
+        </section>
+      </div>
     </div>
   );
 }
