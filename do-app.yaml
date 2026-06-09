@@ -1,0 +1,27 @@
+name: tcghub-frontend
+region: atl
+alerts:
+- rule: DEPLOYMENT_FAILED
+envs:
+- key: NEXT_PUBLIC_API_BASE_URL
+  scope: RUN_AND_BUILD_TIME
+  value: https://tcghub.ai
+ingress:
+  rules:
+  - component:
+      name: tcghub-web
+    match:
+      path:
+        prefix: /
+services:
+- name: tcghub-web
+  github:
+    branch: main
+    deploy_on_push: true
+    repo: fernandafaria/tcghub
+  build_command: npm run build
+  run_command: npm start
+  http_port: 3000
+  instance_count: 1
+  instance_size_slug: apps-s-1vcpu-1gb
+  source_dir: /
