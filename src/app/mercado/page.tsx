@@ -23,8 +23,10 @@ export default function MercadoPage() {
   const [showAllUp, setShowAllUp] = useState(false);
   const [showAllDown, setShowAllDown] = useState(false);
 
+  const [tcg, setTcg] = useState("pokemon");
+  
   // Fetch API cards for real market data
-  const { data: apiData } = useApi<ApiCardsResponse>("/api/cards?limit=100");
+  const { data: apiData } = useApi<ApiCardsResponse>(`/api/cards?game=${tcg}&limit=100`);
 
   const apiCards: Card[] = useMemo(() => {
     if (!apiData?.cards) return [];

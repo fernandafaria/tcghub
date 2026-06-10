@@ -63,9 +63,12 @@ export default function CardDetailPage() {
   const params = useParams();
   const id = params?.id as string;
 
+  // Extract game from card slug prefix (e.g. "pokemon-charizard-vmax" → "pokemon")
+  const gamePrefix = id?.split("-")[0] || "pokemon";
+
   // Fetch all cards from API to find this one
   const { data: apiData, loading: cardsLoading } =
-    useApi<ApiCardsResponse>("/api/cards?limit=200");
+    useApi<ApiCardsResponse>(`/api/cards?game=${gamePrefix}&limit=200`);
 
   const apiCards: Card[] = useMemo(() => {
     if (!apiData?.cards) return [];

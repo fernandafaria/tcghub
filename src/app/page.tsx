@@ -66,7 +66,7 @@ export default function Home() {
 
   // ─── Fetch cards from API ──────────────────────────────────────
   const { data: apiData, loading: cardsLoading, error: cardsError } =
-    useApi<ApiCardsResponse>("/api/cards?limit=50");
+    useApi<ApiCardsResponse>(`/api/cards?game=${tcg}&limit=50`);
 
   // Map API cards to frontend Card format
   const apiCards: Card[] = useMemo(() => {

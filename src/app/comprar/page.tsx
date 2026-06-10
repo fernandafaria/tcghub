@@ -58,9 +58,11 @@ function ComprarContent() {
   const [deck, setDeck] = useState<DeckEntry[]>([]);
   const [decklistText, setDecklistText] = useState('');
 
+  const [tcg, setTcg] = useState("pokemon");
+
   // ─── Fetch cards from API ──────────────────────────────────────
   const { data: apiData, loading: cardsLoading } =
-    useApi<ApiCardsResponse>('/api/cards?limit=200');
+    useApi<ApiCardsResponse>(`/api/cards?game=${tcg}&limit=200`);
 
   const apiCards: Card[] = useMemo(() => {
     if (!apiData?.cards) return [];
