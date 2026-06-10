@@ -586,6 +586,9 @@ export default function CardDetailPage() {
               </div>
             </div>
 
+            {/* ─────── HEALTH SCORE ─────── */}
+            <HealthScorePanel cardId={id} cardName={card.name} hasRealData={apiCards.length > 0} />
+
             {/* Action buttons */}
             <div className="row" style={{ gap: 10 }}>
               <button
@@ -606,6 +609,103 @@ export default function CardDetailPage() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── Health Score Panel ─────────────────────────────────────────────────────
+
+interface HealthScoreData {
+  ok: boolean;
+  health_score: {
+    overall: number;
+    recommendation: "BUY" | "HOLD" | "SELL";
+    factors: {
+      stability: { score: number; label: string };
+      demand: { score: number; label: string };
+      supply: { score: number; label: string };
+      meta: { score: number; label: string };
+    };
+  };
+  pricing: {
+    current_brl: number;
+    price_change_7d_pct: number;
+    volatility_pct: number;
+  };
+}
+
+function HealthScorePanel({ cardId, cardName, hasRealData }: { cardId: string; cardName: string; hasRealData: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const { data: healthData, loading } = useApi<HealthScoreData>(
+    hasRealData ? `/api/health/${cardId}` : null
+  );
+
+  if (!hasRealData || loading) return null;
+  if (!healthData?.health_score) return null;
+
+  const hs = healthData.health_score;
+  const getScoreColor = (s: number) => {
+    if (s >= 70) return "var(--up)";
+    if (s >= 45) return "var(--gold)";
+    return "var(--down)";
+  };
+
+  return (
+    <div className="card card-pad col" style={{ gap: 12 }}>
+      <div className="row between center" style={{ cursor: "pointer" }} onClick={() => setExpanded(!expanded)}>
+        <div className="row center" style={{ gap: 10 }}>
+          <span className="eyebrow">TCGHub Health Score</span>
+          <span style={{
+            fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: "var(--r-pill)",
+            background: hs.recommendation === "BUY" ? "var(--up-bg)" : hs.recommendation === "SELL" ? "var(--down-bg)" : "var(--neutral-bg)",
+            color: getScoreColor(hs.overall),
+          }}>
+            {hs.recommendation === "BUY" ? "🟢 COMPRAR" : hs.recommendation === "SELL" ? "🔴 VENDER" : "⚪ MANTER"}
+          </span>
+        </div>
+        <span className="mono" style={{ fontSize: 20, fontWeight: 800, color: getScoreColor(hs.overall) }}>
+          {hs.overall}/100
+        </span>
+      </div>
+
+      {expanded && (
+        <div className="col" style={{ gap: 10 }}>
+          {[
+            { key: "stability", label: "Estabilidade", icon: "📊", ...hs.factors.stability },
+            { key: "demand", label: "Demanda", icon: "🔥", ...hs.factors.demand },
+            { key: "supply", label: "Escassez", icon: "💎", ...hs.factors.supply },
+            { key: "meta", label: "Meta", icon: "⚔️", ...hs.factors.meta },
+          ].map((f) => (
+            <div key={f.key} className="col" style={{ gap: 4 }}>
+              <div className="row between center" style={{ gap: 8 }}>
+                <span className="row center" style={{ gap: 6 }}>
+                  <span style={{ fontSize: 13 }}>{f.icon}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600 }}>{f.label}</span>
+                  <span className="tag" style={{ fontSize: 10 }}>{f.label}</span>
+                </span>
+                <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: getScoreColor(f.score) }}>
+                  {f.score}
+                </span>
+              </div>
+              <div style={{ height: 4, borderRadius: 2, background: "var(--card-2)", overflow: "hidden" }}>
+                <div style={{ height: "100%", width: `${f.score}%`, borderRadius: 2, background: getScoreColor(f.score), transition: "width 0.4s" }} />
+              </div>
+            </div>
+          ))}
+
+          <div className="row between" style={{ gap: 8, paddingTop: 4 }}>
+            <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
+              {hs.pricing?.price_change_7d_pct > 0 ? "↗" : "↘"} {Math.abs(hs.pricing?.price_change_7d_pct || 0)}% 7d
+            </span>
+            <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
+              Vol: {hs.pricing?.volatility_pct || 0}%
+            </span>
+            <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
+              R$ {hs.pricing?.current_brl?.toFixed(2) || "—"}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
