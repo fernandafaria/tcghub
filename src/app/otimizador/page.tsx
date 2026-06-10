@@ -81,7 +81,7 @@ export default function OtimizadorPage() {
     try {
       // Build request — using card_name as slug since the backend resolves names
       const state = cep ? extractStateFromCep(cep) : undefined;
-      const res = await apiFetch<OptimizationResult>('/api/cart-optimizer', {
+      const res = await apiFetch<OptimizationResult>('/api/cart/optimize', {
         method: 'POST',
         body: JSON.stringify({
           items: cards.map(c => ({

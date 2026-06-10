@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { CARDS, WATCH, MOVERS_UP, PRODUCTS, cardById, TCGS } from "@/data";
+import { TCGS } from "@/data";
 import {
   IconSearch, IconCart, IconSpark, IconBell, IconChart, IconArrow,
   IconCards, IconPkg, IconLayers, IconGrid, IconStar, IconBrain, IconUp,
@@ -74,14 +74,12 @@ export default function Home() {
     return apiCardsToCards(apiData.cards);
   }, [apiData]);
 
-  // Combine: prefer API data, fall back to mock data
-  const allCards: Card[] = useMemo(() => {
-    if (apiCards.length > 0) return apiCards;
-    return CARDS;
-  }, [apiCards]);
+  // All cards come from API only — no mock fallback
+  const allCards: Card[] = useMemo(() => apiCards, [apiCards]);
 
   // Card fan — 3 chase cards from the current TCG
   const fanCards = useMemo(() => {
+    if (allCards.length === 0) return [];
     const pool = allCards.filter(
       (c) => c.tcg === tcg && (c.foil || c.tags.includes("Chase"))
     );
@@ -99,6 +97,7 @@ export default function Home() {
 
   // Trending cards for "Mais buscadas agora"
   const trending = useMemo(() => {
+    if (allCards.length === 0) return [];
     const list = allCards.filter((c) => c.tcg === tcg);
     if (list.length === 0) {
       // Fall back to all cards
@@ -108,7 +107,7 @@ export default function Home() {
     return (withFoil.length >= 4 ? withFoil : list).slice(0, 8);
   }, [tcg, allCards]);
 
-  // Movers for pulse — use real cards sorted by price as movers if API returns them
+  // Movers for pulse — use API cards sorted by price as movers
   const pulse = useMemo(() => {
     if (apiCards.length > 0) {
       // Sort by price descending and take top 6 as "movers"
@@ -118,13 +117,36 @@ export default function Home() {
         .slice(0, 6);
       return sorted.map((c, i) => cardToMover(c, 5 + i * 3));
     }
-    return MOVERS_UP.slice(0, 6);
+    return [];
   }, [apiCards]);
 
-  // Sealed products — use mock data for now (no API endpoint yet)
+  // Watch items — generated dynamically from top API cards
+  const watchItems = useMemo(() => {
+    if (apiCards.length === 0) return [];
+    const top = [...apiCards]
+      .filter((c) => c.base > 10)
+      .sort((a, b) => b.base - a.base)
+      .slice(0, 6);
+    return top.map((c, i) => {
+      const confPct = 65 + (top.length - i) * 5;
+      const confLabel = confPct >= 85 ? "alta" : confPct >= 75 ? "média" : "moderada";
+      const pctSign = c.mo >= 0 ? "+" : "";
+      return {
+        cardId: c.id,
+        conf: `Convicção ${confLabel} (${confPct}%)`,
+        reason: c.meta
+          ? `${c.meta}. ${pctSign}${c.mo.toFixed(1)}% em 30 dias, R$${fmt0(c.base)}.`
+          : `${pctSign}${c.mo.toFixed(1)}% em 30 dias. Preço atual: R$${fmt0(c.base)}. ${c.set} · ${c.rarity}.`,
+      };
+    });
+  }, [apiCards]);
+
+  // Sealed products — fetch from API with fallback to empty
+  const { data: productsData, loading: productsLoading } =
+    useApi<{ products: Product[] }>("/api/products?featured=true");
   const sealedProducts = useMemo(
-    () => PRODUCTS.filter((p) => p.cat === "selado").slice(0, 8),
-    []
+    () => (productsData?.products || []).filter((p) => p.cat === "selado").slice(0, 8),
+    [productsData]
   );
 
   const handleWatchAlert = (cardName: string) => {
@@ -239,11 +261,17 @@ export default function Home() {
           </div>
 
           {/* RIGHT: Card Fan */}
-          <CardFan
-            left={fanCards[0]}
-            mid={fanCards[1]}
-            right={fanCards[2]}
-          />
+          {fanCards.length >= 3 ? (
+            <CardFan
+              left={fanCards[0]}
+              mid={fanCards[1]}
+              right={fanCards[2]}
+            />
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 280 }}>
+              <span style={{ color: "var(--muted)" }}>Carregando cartas...</span>
+            </div>
+          )}
         </section>
 
         {/* ════════════════ SEU DECK ════════════════ */}
@@ -332,7 +360,7 @@ export default function Home() {
               gap: 18,
             }}
           >
-            {WATCH.slice(0, 6).map((w) => {
+            {watchItems.map((w) => {
               const c = allCards.find((x) => x.id === w.cardId) || allCards[0];
               if (!c) return null;
               const sparkData = genSpark(c.id.charCodeAt(0) || 1, c.mo >= 0);
@@ -502,7 +530,8 @@ export default function Home() {
                 gap: 12,
               }}
             >
-              {pulse.map((m, i) => {
+              {pulse.length > 0 ? (
+                pulse.map((m, i) => {
                 const sparkPoints = genSpark(i + 10, true);
                 const tcgKey = m.tcg || "";
                 return (
@@ -574,7 +603,12 @@ export default function Home() {
                     </div>
                   </div>
                 );
-              })}
+              })
+            ) : (
+              <div style={{ textAlign: "center", padding: "20px 0", color: "var(--muted)", gridColumn: "1 / -1" }}>
+                {cardsLoading ? "Carregando..." : "Nenhum movimento de mercado no momento."}
+              </div>
+            )}
             </div>
           </div>
         </section>
@@ -609,7 +643,8 @@ export default function Home() {
               gap: 20,
             }}
           >
-            {trending.map((c) => (
+          {trending.length > 0 ? (
+            trending.map((c) => (
               <Link
                 key={c.id}
                 href={`/carta/${c.id}`}
@@ -617,7 +652,12 @@ export default function Home() {
               >
                 <CardTile card={c} />
               </Link>
-            ))}
+            ))
+          ) : (
+            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 0", color: "var(--muted)" }}>
+              {cardsLoading ? "Carregando cartas..." : "Nenhuma carta encontrada."}
+            </div>
+          )}
           </div>
         </section>
 
@@ -637,18 +677,24 @@ export default function Home() {
               gap: 20,
             }}
           >
-            {sealedProducts.map((p) => (
-              <Link
-                key={p.id}
-                href={`/comprar?cat=selado`}
-                style={{ textDecoration: "none", color: "inherit" }}
-              >
-                <ProductTile
-                  product={p}
-                  offers={3}
-                />
-              </Link>
-            ))}
+            {sealedProducts.length > 0 ? (
+              sealedProducts.map((p) => (
+                <Link
+                  key={p.id}
+                  href={`/comprar?cat=selado`}
+                  style={{ textDecoration: "none", color: "inherit" }}
+                >
+                  <ProductTile
+                    product={p}
+                    offers={3}
+                  />
+                </Link>
+              ))
+            ) : (
+              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 0", color: "var(--muted)" }}>
+                {productsLoading ? "Carregando produtos..." : "Nenhum produto selado disponível no momento."}
+              </div>
+            )}
           </div>
         </section>
 
