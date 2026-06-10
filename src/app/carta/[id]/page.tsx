@@ -637,7 +637,7 @@ interface HealthScoreData {
 function HealthScorePanel({ cardId, cardName, hasRealData }: { cardId: string; cardName: string; hasRealData: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const { data: healthData, loading } = useApi<HealthScoreData>(
-    `/api/health/${cardId}`
+    `/api/health?slug=${cardId}`
   );
 
   if (!hasRealData || loading) return null;
