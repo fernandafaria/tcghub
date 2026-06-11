@@ -11,7 +11,7 @@ import {
 } from "@/components/icons";
 import {
   GameCard, TrendTag, Sparkline, genSpark, TagUI, RarityGlyph,
-  EnergyPips, StoreBadge, Stars, fmt, fmt0,
+  TypePips, StoreBadge, Stars, fmt, fmt0,
 } from "@/components/ui";
 import { toast } from "@/components/Toaster";
 import { useApi } from "@/hooks/useApi";
@@ -467,7 +467,7 @@ export default function CardDetailPage() {
 
                 {/* Tags */}
                 <div className="row" style={{ gap: 6, flex: "0 0 auto" }}>
-                  <EnergyPips energy={card.energy} size={14} />
+                  <TypePips energy={card.energy} size={14} />
                 </div>
               </div>
 

@@ -4,7 +4,7 @@ import { Suspense, useState, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { Card, BuyCategory } from '@/types';
 import { CARDS, PRODUCTS, PRODUCT_CATS } from '@/data';
-import { Stepper, Chip, ProductTile, EnergyPips, fmt, fmt0 } from '@/components/ui';
+import { Stepper, Chip, ProductTile, TypePips, fmt, fmt0 } from '@/components/ui';
 import {
   IconSearch, IconCart, IconSpark, IconStar, IconCards,
   IconPkg, IconLayers, IconGrid, IconBrain, IconTrash,
@@ -374,7 +374,7 @@ function ComprarContent() {
                                 <br />· art ·
                               </div>
                               <div style={{ position: 'absolute', top: 6, left: 7, zIndex: 1 }}>
-                                <EnergyPips energy={card.energy} size={9} />
+                                <TypePips energy={card.energy} size={9} />
                               </div>
                               {card.foil && (
                                 <div

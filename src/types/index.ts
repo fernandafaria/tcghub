@@ -263,3 +263,106 @@ export interface CreditInfo {
   balanceBrl: number;
   pendingBrl: number;
 }
+
+// ─── Vision API types ────────────────────────────────────────────
+
+export interface VisionScanRequest {
+  image_data_url: string;
+  games?: string[];
+}
+
+export interface VisionCardIdentification {
+  game_id: string;
+  card_name: string;
+  card_version: string;
+  set_code: string;
+  collector_number: string;
+  rarity: string;
+  variant: string;
+  is_graded: boolean;
+  grading_company: string | null;
+  grading_grade: string;
+  grading_cert_number: string;
+  confidence_pct: number;
+  grading_confidence_pct: number;
+  notes: string;
+}
+
+export interface VisionScanResponse {
+  identification: VisionCardIdentification;
+  card: ApiCard | null;
+  graded: {
+    company: string | null;
+    grade: string | null;
+    cert_number: string | null;
+    grade_label?: string;
+  };
+  found: boolean;
+  credits_used_brl: string;
+  credits_remaining_brl?: string;
+  scrydex_match_score?: number;
+  error?: string; // 402/502 errors
+}
+
+export interface VisionScanResult {
+  imageDataUrl: string;
+  identification: VisionCardIdentification | null;
+  card: ApiCard | null;
+  graded: VisionScanResponse["graded"] | null;
+  found: boolean;
+  creditsUsedBrl: string;
+  status: "scanning" | "success" | "failed" | "idle";
+  error?: string;
+}
+
+// ─── Batch Scan types ──────────────────────────────────────────────
+
+export interface BatchScanRequest {
+  image_data_url: string;
+  games?: string[];
+  verify_graded?: boolean;
+}
+
+export interface BatchCardPosition {
+  row: number;
+  col: number;
+}
+
+export interface BatchCardIdentification {
+  game_id: string;
+  card_name: string;
+  card_version: string | null;
+  set_code: string | null;
+  collector_number: string | null;
+  rarity: string | null;
+  variant: string | null;
+  is_graded: boolean;
+  grading_company: string | null;
+  grading_grade: string | null;
+  confidence: number;
+  best_guess: boolean;
+}
+
+export interface BatchCardResult {
+  position: BatchCardPosition;
+  identification: BatchCardIdentification;
+  card: ApiCard | null;
+  found: boolean;
+  quantity: number;
+}
+
+export interface BatchScanMeta {
+  total_cards: number;
+  found_cards: number;
+  graded_cards: number;
+  verified_graded_cards: number;
+  cost_brl: string;
+  cost_graded_brl: string;
+  processing_ms: number;
+  model_used: string;
+}
+
+export interface BatchScanResponse {
+  cards: BatchCardResult[];
+  meta: BatchScanMeta;
+}

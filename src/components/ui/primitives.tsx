@@ -1,30 +1,7 @@
 import type React from "react";
 import type { Card, Product } from "@/types";
 import { IconUp, IconDown, IconArrow, IconCheck } from "@/components/icons";
-
-// ─── Utility ─────────────────────────────────────────────────────
-const ENERGY_COLORS: Record<string, string> = {
-  fire: "#f0683c",
-  water: "#3d9be0",
-  grass: "#4fb56a",
-  lightning: "#f2c94c",
-  psychic: "#b46fd6",
-  fighting: "#c9603f",
-  dark: "#7d7390",
-  metal: "#9aa6b2",
-  dragon: "#caa23f",
-  colorless: "#c4bdd0",
-  red: "#e0563f",
-  blue: "#3d9be0",
-  black: "#7d7390",
-  green: "#4fb56a",
-  amber: "#e0a93f",
-  emerald: "#4fb56a",
-  sapphire: "#3d9be0",
-  ruby: "#e0563f",
-  steel: "#9aa6b2",
-};
-
+import { CARD_COLORS } from "@/lib/colors";
 const RARITY_INFO: Record<
   string,
   { gl: string; col?: string; holo?: boolean; label?: string }
@@ -136,8 +113,8 @@ export function genSpark(seed: number, trendUp: boolean): number[] {
   return pts;
 }
 
-// ─── EnergyPips ──────────────────────────────────────────────────
-export function EnergyPips({
+// ─── TypePips ──────────────────────────────────────────────────
+export function TypePips({
   energy,
   size,
 }: {
@@ -152,7 +129,7 @@ export function EnergyPips({
           key={i}
           className="pip"
           style={{
-            background: ENERGY_COLORS[e] || "var(--muted)",
+            background: CARD_COLORS[e] || "var(--muted)",
             width: s,
             height: s,
           }}
@@ -242,7 +219,7 @@ export function GameCard({
     >
       <div className="gc-top">
         <span className="gc-name">{card.name}</span>
-        <EnergyPips energy={card.energy} />
+        <TypePips energy={card.energy} />
       </div>
       <div className={`gc-art ${card.foil ? "foil" : ""}`}>
         <span className="ph">art</span>
@@ -275,7 +252,7 @@ export function CardTile({
           <br />· art ·
         </div>
         <div style={{ position: "absolute", top: 8, left: 8 }}>
-          <EnergyPips energy={card.energy} />
+          <TypePips energy={card.energy} />
         </div>
         {card.foil && (
           <div
@@ -470,7 +447,7 @@ export function CardFan({
       <div className="gamecard c-left">
         <div className="gc-top">
           <span className="gc-name">{left.name}</span>
-          <EnergyPips energy={left.energy} />
+          <TypePips energy={left.energy} />
         </div>
         <div className={`gc-art ${left.foil ? "foil" : ""}`}>
           <span className="ph">art</span>
@@ -483,7 +460,7 @@ export function CardFan({
       <div className={`gamecard c-mid ${mid.foil ? "is-foil foil" : ""}`} style={{ ["--gc" as string]: mid.gc }}>
         <div className="gc-top">
           <span className="gc-name">{mid.name}</span>
-          <EnergyPips energy={mid.energy} />
+          <TypePips energy={mid.energy} />
         </div>
         <div className={`gc-art ${mid.foil ? "foil" : ""}`}>
           <span className="ph">art</span>
@@ -496,7 +473,7 @@ export function CardFan({
       <div className="gamecard c-right">
         <div className="gc-top">
           <span className="gc-name">{right.name}</span>
-          <EnergyPips energy={right.energy} />
+          <TypePips energy={right.energy} />
         </div>
         <div className={`gc-art ${right.foil ? "foil" : ""}`}>
           <span className="ph">art</span>

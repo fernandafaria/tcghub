@@ -4,7 +4,7 @@ export {
   TrendTag,
   Sparkline,
   genSpark,
-  EnergyPips,
+  TypePips,
   RarityGlyph,
   Chip,
   TagUI,

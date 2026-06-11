@@ -1,27 +1,5 @@
 import type { ApiCard, Card, Mover } from "@/types";
-
-const ENERGY_COLORS: Record<string, string> = {
-  fire: "#f0683c",
-  water: "#3d9be0",
-  grass: "#4fb56a",
-  lightning: "#f2c94c",
-  psychic: "#b46fd6",
-  fighting: "#c9603f",
-  dark: "#7d7390",
-  metal: "#9aa6b2",
-  dragon: "#caa23f",
-  colorless: "#c4bdd0",
-  red: "#e0563f",
-  blue: "#3d9be0",
-  black: "#7d7390",
-  green: "#4fb56a",
-  white: "#f5f0e8",
-  amber: "#e0a93f",
-  emerald: "#4fb56a",
-  sapphire: "#3d9be0",
-  ruby: "#e0563f",
-  steel: "#9aa6b2",
-};
+import { CARD_COLORS, CARD_COLOR_FALLBACK } from "@/lib/colors";
 
 /**
  * Map a single API card to the frontend Card format.
@@ -42,7 +20,7 @@ function gameFromSlug(slug: string): string {
 export function apiCardToCard(api: ApiCard, gameId?: string): Card {
   const colorLower = (api.color || "").toLowerCase().trim();
   const energy = colorLower ? [colorLower] : ["colorless"];
-  const gc = ENERGY_COLORS[colorLower] || "#c4bdd0";
+  const gc = CARD_COLORS[colorLower] || CARD_COLOR_FALLBACK;
 
   const base =
     api.price_brl_mid ??

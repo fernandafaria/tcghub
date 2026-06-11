@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '@/lib/api';
 import { TagUI, fmt, fmt0 } from '@/components/ui';
-import { IconSearch, IconCart, IconTag, IconCheck, IconPlus, IconMinus, IconTrash } from '@/components/icons';
-import type { BuylistEntry } from '@/types';
+import { IconSearch, IconCart, IconTag, IconCheck, IconPlus, IconMinus, IconTrash, IconSpark, IconLayers } from '@/components/icons';
+import type { BuylistEntry, ApiCard, VisionCardIdentification, BatchCardResult } from '@/types';
+import CameraScanner from '@/components/CameraScanner';
+import BatchScanner from '@/components/BatchScanner';
 
 // ─── State types ────────────────────────────────────────────────────────────
 
@@ -13,10 +15,12 @@ interface CartItem {
   quantity: number;
 }
 
-type Tab = 'search' | 'cart' | 'history';
+type Tab = 'search' | 'cart' | 'history' | 'scan';
+type ScanMode = 'single' | 'batch';
 
 export default function ScannerPage() {
   const [tab, setTab] = useState<Tab>('search');
+  const [scanMode, setScanMode] = useState<ScanMode>('single');
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,6 +163,32 @@ export default function ScannerPage() {
     if (tab === 'history') fetchMyLots();
   }, [tab]);
 
+  // ─── Collection / Buylist callbacks (Vision scanner) ───────────────────
+
+  const handleAddToCollection = (card: ApiCard | null, _identification: VisionCardIdentification | null) => {
+    // TODO: integrate with collection API
+    console.log("Add to collection", { card });
+  };
+
+  const handleAddToBuylist = (card: ApiCard | null, identification: VisionCardIdentification | null) => {
+    if (identification) {
+      setSearchQuery(identification.card_name);
+      setTab('search');
+    }
+  };
+
+  // Batch scan: add identified cards to cart as buylist search
+  const handleBatchToBuylist = (cards: BatchCardResult[]) => {
+    // Search for each card name in buylist
+    const names = cards
+      .filter(c => c.found && c.card)
+      .map(c => c.identification.card_name);
+    if (names.length > 0) {
+      setSearchQuery(names[0]);
+      setTab('search');
+    }
+  };
+
   // ─── Computed totals ─────────────────────────────────────────────────────
 
   const cartTotal = cart.reduce((sum, item) => sum + item.entry.priceBrl * item.quantity, 0);
@@ -182,6 +212,9 @@ export default function ScannerPage() {
 
         {/* Tabs */}
         <div className="mode-toggle" style={{ marginBottom: 24 }}>
+          <button className={tab === 'scan' ? 'on' : ''} onClick={() => setTab('scan')}>
+            <IconSpark /> Escanear
+          </button>
           <button className={tab === 'search' ? 'on' : ''} onClick={() => setTab('search')}>
             <IconSearch /> Buscar cartas
           </button>
@@ -202,6 +235,33 @@ export default function ScannerPage() {
         {submitted && (
           <div style={{ padding: '14px 20px', background: 'var(--up-bg)', border: '1px solid var(--up)', borderRadius: 'var(--r-sm)', color: 'var(--up)', fontSize: 14, marginBottom: 16, textAlign: 'center' }}>
             <IconCheck /> Lote enviado com sucesso! ID: {submitted.slice(0, 8)}...
+          </div>
+        )}
+
+        {/* ── SCAN TAB ──────────────────────────────────────────────────── */}
+        {tab === 'scan' && (
+          <div>
+            {/* Mode toggle */}
+            <div className="mode-toggle" style={{ marginBottom: 16 }}>
+              <button className={scanMode === 'single' ? 'on' : ''} onClick={() => setScanMode('single')}>
+                <IconSpark /> Carta individual
+              </button>
+              <button className={scanMode === 'batch' ? 'on' : ''} onClick={() => setScanMode('batch')}>
+                <IconLayers /> Binder (lote)
+              </button>
+            </div>
+
+            {scanMode === 'single' ? (
+              <CameraScanner
+                onAddToCollection={handleAddToCollection}
+                onAddToBuylist={handleAddToBuylist}
+              />
+            ) : (
+              <BatchScanner
+                onAddToCollection={(card, qty) => handleAddToCollection(card, null)}
+                onAddToBuylist={handleBatchToBuylist}
+              />
+            )}
           </div>
         )}
 
