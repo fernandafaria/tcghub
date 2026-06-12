@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect, useCallback, useRef } from "react";
+import { Suspense, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { TCGS } from "@/data";
@@ -188,7 +188,7 @@ function BuscarContent() {
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      doSearch(query, tcgFilter, 50);
+      doSearch(query, tcgFilter, 100);
       syncURL(query, tcgFilter);
     }, 300);
     return () => {
@@ -228,10 +228,26 @@ function BuscarContent() {
   })();
 
   // Client-side rarity filter (lightweight, on already-fetched results)
-  const filteredResults =
-    rarityFilter === "todas"
-      ? results
-      : results.filter((c) => c.rarity === rarityFilter);
+  const filteredResults = useMemo(() => {
+    let cards = results;
+
+    // Client-side name/set/num filter (API search param is ignored by backend)
+    if (query) {
+      const q = query.toLowerCase();
+      cards = cards.filter(
+        (c) =>
+          c.name.toLowerCase().includes(q) ||
+          c.set.toLowerCase().includes(q) ||
+          c.num.toLowerCase().includes(q)
+      );
+    }
+
+    if (rarityFilter !== "todas") {
+      cards = cards.filter((c) => c.rarity === rarityFilter);
+    }
+
+    return cards;
+  }, [results, query, rarityFilter]);
 
   const hasQuery = query.length > 0;
   const hasFilters = hasQuery || tcgFilter !== "todos";
