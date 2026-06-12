@@ -1,12 +1,15 @@
 import { Pool } from "pg";
+import dns from "dns";
 
-// @ts-expect-error - pg PoolConfig doesn't expose 'family' in types but it works at runtime
+// Force IPv4 — DO App Platform resolves Supabase to IPv6 by default
+dns.setDefaultResultOrder("ipv4first");
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 5,
   connectionTimeoutMillis: 5000,
   idleTimeoutMillis: 30000,
-  family: 4, // Force IPv4
+  family: 4,
 });
 
 export function query(text: string, params?: any[]) {

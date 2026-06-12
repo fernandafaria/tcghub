@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
         LIMIT 1
       ) p ON true
       WHERE c.game_id = $1
-      ORDER BY c.set_code, c.collector_number
+      ORDER BY (p.price_brl_mid IS NOT NULL) DESC, p.price_brl_mid DESC NULLS LAST
       LIMIT $2 OFFSET $3`,
       [game, limit, offset]
     );

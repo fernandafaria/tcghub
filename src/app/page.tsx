@@ -1,166 +1,101 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { TCGS } from "@/data";
 import {
-  IconSearch, IconCart, IconSpark, IconBell, IconChart, IconArrow,
-  IconCards, IconPkg, IconLayers, IconGrid, IconStar, IconBrain, IconUp,
+  IconSearch, IconSpark, IconBell, IconChart, IconArrow,
+  IconCards, IconBrain, IconUp, IconDown, IconStar,
 } from "@/components/icons";
 import {
-  CardFan, GameCard, CardTile, ProductTile, SectionHead, TrendTag,
+  CardFan, GameCard, CardTile, SectionHead, TrendTag,
   Sparkline, genSpark, Chip, TagUI, fmt, fmt0,
 } from "@/components/ui";
-import { toast } from "@/components/Toaster";
 import { useApi } from "@/hooks/useApi";
-import { apiCardsToCards, apiCardToCard, cardToMover } from "@/lib/adapters";
-import type { ApiCardsResponse, Card, Mover, Product } from "@/types";
+import { apiCardsToCards, apiCardToCard } from "@/lib/adapters";
+import type { ApiCardsResponse, Card } from "@/types";
 
-// ─── Helpers ───────────────────────────────────────────────────────────────
+// ─── TCG COLOR MAP ─────────────────────────────────────────────────────────
+const TCG_COLORS: Record<string, string> = {
+  pokemon: "#f2c94c",
+  mtg: "#e0853f",
+  ygo: "#b46fd6",
+  onepiece: "#e0563f",
+  lorcana: "#3d9be0",
+};
 
-const CATEGORY_CHIPS = [
-  ["Cartas avulsas", "cards", "avulsas"] as const,
-  ["Produtos selados", "pkg", "selado"] as const,
-  ["Decks prontos", "layers", "deck"] as const,
-  ["Acessórios", "grid", "acessorio"] as const,
-  ["Cartas graded", "star", "graded"] as const,
+// ─── QUICK STATS ───────────────────────────────────────────────────────────
+const QUICK_STATS = [
+  { value: "256K+", label: "Cartas catalogadas" },
+  { value: "15", label: "TCGs mapeados" },
+  { value: "BRL", label: "Preços em reais" },
 ];
 
-const CAT_ICONS: Record<string, React.FC<{ className?: string }>> = {
-  cards: IconCards,
-  pkg: IconPkg,
-  layers: IconLayers,
-  grid: IconGrid,
-  star: IconStar,
-};
-
-function deckTotalCards(): number {
-  if (typeof window === "undefined") return 0;
-  try {
-    const raw = localStorage.getItem("tcghub-deck");
-    if (!raw) return 0;
-    const deck: { quantity: number }[] = JSON.parse(raw);
-    return deck.reduce((sum, d) => sum + (d.quantity || 0), 0);
-  } catch {
-    return 0;
-  }
-}
-
-// ─── Vibrant color per TCG for movers ──────────────────────────────────────
-
-const TCG_COLORS: Record<string, string> = {
-  PKM: "#f2c94c",
-  MTG: "#e0853f",
-  YGO: "#b46fd6",
-  OP: "#e0563f",
-  LOR: "#3d9be0",
-};
+// ─── WHY CARDS ─────────────────────────────────────────────────────────────
+const WHY_CARDS = [
+  {
+    icon: IconSpark,
+    title: "Saiba o que vale",
+    body: "Escaneie seu binder em segundos. Valuation com explicação — não é número solto, é o porquê.",
+    href: "/scanner",
+    cta: "Escanear agora",
+    accent: "var(--gold-2)",
+  },
+  {
+    icon: IconBrain,
+    title: "Entenda o movimento",
+    body: "Health Score de cada carta. Tendências, alertas de valorização, recomendação Buy/Hold/Sell.",
+    href: "/mercado",
+    cta: "Ver mercado",
+    accent: "var(--violet-2)",
+  },
+  {
+    icon: IconChart,
+    title: "Opere com inteligência",
+    body: "Para lojistas: BuyList automática, gestão de estoque, CRM de jogador. Margem calculada, não chutada.",
+    href: "/lojista",
+    cta: "Sou lojista",
+    accent: "var(--teal-2)",
+  },
+];
 
 // ─── HOME PAGE ─────────────────────────────────────────────────────────────
-
 export default function Home() {
   const [tcg, setTcg] = useState("pokemon");
   const [searchQuery, setSearchQuery] = useState("");
-  const dCount = useMemo(() => deckTotalCards(), []);
-  const dMissing = Math.max(0, 60 - dCount);
 
-  // ─── Fetch cards from API ──────────────────────────────────────
-  const { data: apiData, loading: cardsLoading, error: cardsError } =
+  // Fetch cards from API
+  const { data: apiData, loading: cardsLoading } =
     useApi<ApiCardsResponse>(`/api/cards?game=${tcg}&limit=50`);
 
-  // Map API cards to frontend Card format
   const apiCards: Card[] = useMemo(() => {
     if (!apiData?.cards) return [];
     return apiCardsToCards(apiData.cards);
   }, [apiData]);
 
-  // All cards come from API only — no mock fallback
-  const allCards: Card[] = useMemo(() => apiCards, [apiCards]);
-
-  // Card fan — 3 chase cards from the current TCG
+  // Card fan — top 3 cards by price
   const fanCards = useMemo(() => {
-    if (allCards.length === 0) return [];
-    const pool = allCards.filter(
-      (c) => c.tcg === tcg && (c.foil || c.tags.includes("Chase"))
-    );
-    if (pool.length < 3) {
-      const fallback = allCards.filter((c) => c.tcg === tcg);
-      if (fallback.length < 3) {
-        // Try any cards
-        const any = allCards.length >= 3 ? allCards : [...allCards, ...allCards, ...allCards];
-        return [any[0], any[1], any[2]];
-      }
-      return [fallback[3] || fallback[0], fallback[0] || fallback[1], fallback[2] || fallback[0]];
-    }
-    return [pool[2 % pool.length], pool[0], pool[1 % pool.length]];
-  }, [tcg, allCards]);
+    if (apiCards.length < 3) return [];
+    const sorted = [...apiCards]
+      .filter((c) => c.base > 0)
+      .sort((a, b) => b.base - a.base);
+    if (sorted.length >= 3) return [sorted[2], sorted[0], sorted[1]];
+    return apiCards.slice(0, 3);
+  }, [apiCards]);
 
-  // Trending cards for "Mais buscadas agora"
+  // Trending cards for "Termômetro do mercado"
   const trending = useMemo(() => {
-    if (allCards.length === 0) return [];
-    const list = allCards.filter((c) => c.tcg === tcg);
-    if (list.length === 0) {
-      // Fall back to all cards
-      return allCards.slice(0, 8);
-    }
-    const withFoil = list.filter((c) => c.foil);
-    return (withFoil.length >= 4 ? withFoil : list).slice(0, 8);
-  }, [tcg, allCards]);
-
-  // Movers for pulse — use API cards sorted by price as movers
-  const pulse = useMemo(() => {
-    if (apiCards.length > 0) {
-      // Sort by price descending and take top 6 as "movers"
-      const sorted = [...apiCards]
-        .filter((c) => c.base > 0)
-        .sort((a, b) => b.base - a.base)
-        .slice(0, 6);
-      return sorted.map((c, i) => cardToMover(c, 5 + i * 3));
-    }
-    return [];
-  }, [apiCards]);
-
-  // Watch items — generated dynamically from top API cards
-  const watchItems = useMemo(() => {
     if (apiCards.length === 0) return [];
-    const top = [...apiCards]
-      .filter((c) => c.base > 10)
+    return [...apiCards]
+      .filter((c) => c.tcg === tcg)
       .sort((a, b) => b.base - a.base)
-      .slice(0, 6);
-    return top.map((c, i) => {
-      const confPct = 65 + (top.length - i) * 5;
-      const confLabel = confPct >= 85 ? "alta" : confPct >= 75 ? "média" : "moderada";
-      const pctSign = c.mo >= 0 ? "+" : "";
-      return {
-        cardId: c.id,
-        conf: `Convicção ${confLabel} (${confPct}%)`,
-        reason: c.meta
-          ? `${c.meta}. ${pctSign}${c.mo.toFixed(1)}% em 30 dias, R$${fmt0(c.base)}.`
-          : `${pctSign}${c.mo.toFixed(1)}% em 30 dias. Preço atual: R$${fmt0(c.base)}. ${c.set} · ${c.rarity}.`,
-      };
-    });
-  }, [apiCards]);
-
-  // Sealed products — fetch from API with fallback to empty
-  const { data: productsData, loading: productsLoading } =
-    useApi<{ products: Product[] }>("/api/products?featured=true");
-  const sealedProducts = useMemo(
-    () => (productsData?.products || []).filter((p) => p.cat === "selado").slice(0, 8),
-    [productsData]
-  );
-
-  const handleWatchAlert = (cardName: string) => {
-    toast(`Alerta criado para ${cardName}!`);
-  };
+      .slice(0, 8);
+  }, [tcg, apiCards]);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
-      toast(`Buscando "${searchQuery.trim()}"...`);
+      window.location.href = `/buscar?q=${encodeURIComponent(searchQuery.trim())}`;
     }
-  };
-
-  const handleCategoryClick = (cat: string) => {
-    window.location.href = `/comprar?cat=${cat}`;
   };
 
   return (
@@ -173,7 +108,7 @@ export default function Home() {
             gridTemplateColumns: "1.05fr 0.95fr",
             gap: 40,
             alignItems: "center",
-            padding: "20px 0 8px",
+            padding: "32px 0 24px",
           }}
         >
           {/* LEFT */}
@@ -190,8 +125,8 @@ export default function Home() {
                 lineHeight: 1.0,
               }}
             >
-              <span className="holo-text">Jogar, colecionar e investir</span>{" "}
-              em cartas.
+              <span className="holo-text">Sua coleção</span>{" "}
+              vale mais do que você imagina.
             </h1>
             <p
               style={{
@@ -202,156 +137,88 @@ export default function Home() {
                 lineHeight: 1.5,
               }}
             >
-              Compare preços entre lojas verificadas, receba alertas de
-              valorização e compre protegido — do primeiro booster ao slab PSA
-              10.
+              Descubra em 30 segundos. Scanner de binder, valuation com
+              explicação e alertas de valorização — sem comprar nada.
             </p>
 
-            {/* Search bar */}
-            <div
-              className="card"
-              style={{
-                marginTop: 24,
-                padding: "8px 8px 8px 18px",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                borderRadius: "var(--r-pill)",
-                maxWidth: 560,
-              }}
-            >
-              <span style={{ color: "var(--muted)", display: "inline-flex" }}>
-                <IconSearch />
-              </span>
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Buscar carta, produto, ou colar um deck…"
-                style={{
-                  flex: 1,
-                  background: "none",
-                  border: "none",
-                  color: "var(--text)",
-                  fontSize: "15.5px",
-                  outline: "none",
-                }}
-              />
-              <button className="btn btn-gold" onClick={handleSearch}>
-                Buscar
-              </button>
+            {/* CTA Row */}
+            <div className="row" style={{ marginTop: 24, gap: 12 }}>
+              <Link href="/scanner" className="btn btn-gold btn-lg">
+                <IconSpark /> Escanear meu binder
+              </Link>
+              <Link href="/importar" className="btn btn-ghost btn-lg">
+                Importar coleção
+              </Link>
             </div>
 
-            {/* Category chips */}
-            <div className="row gap-8 wrapf" style={{ marginTop: 16 }}>
-              {CATEGORY_CHIPS.map(([label, ic, cat]) => {
-                const IconComp = CAT_ICONS[ic];
-                return (
-                  <button
-                    key={cat}
-                    className="chip"
-                    onClick={() => handleCategoryClick(cat)}
+            {/* Quick stats */}
+            <div className="row" style={{ marginTop: 28, gap: 32 }}>
+              {QUICK_STATS.map((s) => (
+                <div key={s.label} className="col" style={{ gap: 2 }}>
+                  <span
+                    className="mono"
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 700,
+                      color: "var(--text)",
+                    }}
                   >
-                    {IconComp && <IconComp className="ic" />}
-                    {label}
-                  </button>
-                );
-              })}
+                    {s.value}
+                  </span>
+                  <span style={{ fontSize: 12, color: "var(--muted)" }}>
+                    {s.label}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
           {/* RIGHT: Card Fan */}
           {fanCards.length >= 3 ? (
-            <CardFan
-              left={fanCards[0]}
-              mid={fanCards[1]}
-              right={fanCards[2]}
-            />
+            <CardFan left={fanCards[0]} mid={fanCards[1]} right={fanCards[2]} />
           ) : (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: 280 }}>
-              <span style={{ color: "var(--muted)" }}>Carregando cartas...</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minHeight: 280,
+              }}
+            >
+              <span style={{ color: "var(--muted)" }}>
+                {cardsLoading ? "Carregando cartas..." : "Catálogo pronto. Escolha um TCG acima."}
+              </span>
             </div>
           )}
         </section>
 
-        {/* ════════════════ SEU DECK ════════════════ */}
-        <section style={{ margin: "34px 0 30px" }}>
-          <div
-            className="card card-pad row between center wrapf"
-            style={{
-              gap: 18,
-              borderColor: "var(--gold-bd)",
-              background:
-                "linear-gradient(120deg, var(--gold-bg), transparent 70%)",
-            }}
-          >
-            {dCount > 0 ? (
-              <>
-                <div className="row center" style={{ gap: 14 }}>
-                  <span
-                    style={{
-                      color: "var(--gold-2)",
-                      display: "inline-flex",
-                    }}
-                  >
-                    <IconCards />
-                  </span>
-                  <div className="col" style={{ gap: 2 }}>
-                    <span style={{ fontWeight: 600, fontSize: 15 }}>
-                      Seu deck em montagem ·{" "}
-                      <span className="mono">{dCount}</span> cartas
-                    </span>
-                    <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-                      Faltam <b className="mono">{dMissing}</b> pro padrão de
-                      60. Sugestão: +2 <b>Iono</b> deixa mais consistente.
-                    </span>
-                  </div>
-                </div>
-                <div className="row" style={{ gap: 8 }}>
-                  <Link href="/comprar" className="btn btn-ghost">
-                    Continuar montando
-                  </Link>
-                  <Link href="/comprar?optimize=1" className="btn btn-gold">
-                    Otimizar frete <IconArrow />
-                  </Link>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="row center" style={{ gap: 14 }}>
-                  <span
-                    style={{
-                      color: "var(--gold-2)",
-                      display: "inline-flex",
-                    }}
-                  >
-                    <IconCards />
-                  </span>
-                  <div className="col" style={{ gap: 2 }}>
-                    <span style={{ fontWeight: 600, fontSize: 15 }}>
-                      Tem um deck em mente?
-                    </span>
-                    <span style={{ fontSize: 13, color: "var(--text-2)" }}>
-                      Monte carta a carta ou cole a lista — a gente acha o
-                      frete mínimo e o que falta.
-                    </span>
-                  </div>
-                </div>
-                <Link href="/comprar" className="btn btn-gold">
-                  <IconSpark /> Montar meu deck
-                </Link>
-              </>
-            )}
+        {/* ════════════════ TCG SELECTOR ════════════════ */}
+        <section style={{ margin: "16px 0 36px" }}>
+          <div className="row wrapf" style={{ gap: 8 }}>
+            {Object.entries(TCGS).map(([key, tcgData]) => (
+              <button
+                key={key}
+                className={`chip ${tcg === key ? "chip-active" : ""}`}
+                onClick={() => setTcg(key)}
+                style={{
+                  background: tcg === key ? `${TCG_COLORS[key] || "var(--gold-2)"}22` : undefined,
+                  borderColor: tcg === key ? TCG_COLORS[key] : undefined,
+                  color: tcg === key ? TCG_COLORS[key] : undefined,
+                }}
+              >
+                {typeof tcgData === "object" && tcgData !== null && "label" in tcgData
+                  ? (tcgData as { label: string }).label
+                  : key}
+              </button>
+            ))}
           </div>
         </section>
 
-        {/* ════════════════ COMPRE AGORA · TENDE A VALORIZAR ════════════════ */}
+        {/* ════════════════ POR QUE TCGHUB? ════════════════ */}
         <section style={{ marginBottom: 48 }}>
           <SectionHead
-            title="Compre agora · tende a valorizar"
-            subtitle="Alertas de preço com o porquê — não é palpite de YouTube"
-            moreLabel="Ver mercado"
-            moreHref="/mercado"
+            title="Por que o TCGHub?"
+            subtitle="Inteligência antes do marketplace. Entenda sua coleção, depois negocie."
           />
           <div
             style={{
@@ -360,379 +227,180 @@ export default function Home() {
               gap: 18,
             }}
           >
-            {watchItems.map((w) => {
-              const c = allCards.find((x) => x.id === w.cardId) || allCards[0];
-              if (!c) return null;
-              const sparkData = genSpark(c.id.charCodeAt(0) || 1, c.mo >= 0);
+            {WHY_CARDS.map((w) => {
+              const Icon = w.icon;
               return (
-                <div
-                  key={w.cardId}
+                <Link
+                  key={w.title}
+                  href={w.href}
                   className="card card-pad col"
                   style={{
-                    gap: 12,
-                    borderColor: "var(--violet-bd)",
+                    gap: 14,
+                    textDecoration: "none",
+                    color: "inherit",
+                    borderColor: "var(--bg-3)",
                   }}
                 >
-                  <div className="row between center">
-                    <span className="tag tag-violet">
-                      <IconBell /> {w.conf}
-                    </span>
-                    <TrendTag pct={c.mo} sm />
-                  </div>
-                  <Link
-                    href={`/carta/${c.id}`}
-                    className="row center"
-                    style={{ gap: 12, textDecoration: "none", color: "inherit" }}
+                  <span
+                    style={{
+                      color: w.accent,
+                      display: "inline-flex",
+                      width: 36,
+                      height: 36,
+                    }}
                   >
-                    <div
-                      className={`cardimg ${c.art} ${c.foil ? "foil" : ""}`}
+                    <Icon className="ic-lg" />
+                  </span>
+                  <div className="col" style={{ gap: 6 }}>
+                    <span style={{ fontWeight: 600, fontSize: 16 }}>
+                      {w.title}
+                    </span>
+                    <span
                       style={{
-                        width: 52,
-                        aspectRatio: "2.5/3.5",
-                        borderRadius: 7,
-                        flex: "0 0 auto",
+                        fontSize: 13.5,
+                        color: "var(--text-2)",
+                        lineHeight: 1.5,
                       }}
                     >
-                      <div className="shine" />
-                    </div>
-                    <div
-                      className="col grow"
-                      style={{ gap: 2, minWidth: 0 }}
-                    >
-                      <span
-                        style={{
-                          fontWeight: 600,
-                          fontSize: 14,
-                          whiteSpace: "nowrap",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                        }}
-                      >
-                        {c.name}
-                      </span>
-                      <span
-                        className="mono"
-                        style={{ fontSize: "11.5px", color: "var(--muted)" }}
-                      >
-                        {c.set} · {fmt0(c.base)}
-                      </span>
-                    </div>
-                  </Link>
-                  <p
-                    style={{
-                      fontSize: "12.5px",
-                      color: "var(--text-2)",
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    {w.reason}
-                  </p>
-                  <div className="row" style={{ gap: 8 }}>
-                    <Link
-                      href={`/carta/${c.id}`}
-                      className="btn btn-gold btn-sm grow"
-                    >
-                      Ver ofertas
-                    </Link>
-                    <button
-                      className="btn btn-ghost btn-sm"
-                      onClick={() => handleWatchAlert(c.name)}
-                    >
-                      <IconBell /> Alerta
-                    </button>
+                      {w.body}
+                    </span>
                   </div>
-                  {/* Sparkline mini */}
-                  <div
-                    className="col"
-                    style={{
-                      gap: 6,
-                      padding: "8px 10px",
-                      background: "var(--bg-2)",
-                      borderRadius: "var(--r-xs)",
-                    }}
+                  <span
+                    className="btn btn-ghost btn-sm"
+                    style={{ alignSelf: "flex-start", marginTop: "auto" }}
                   >
-                    <Sparkline
-                      points={sparkData}
-                      color={
-                        c.mo >= 0 ? "var(--up)" : "var(--down)"
-                      }
-                      width={120}
-                      height={28}
-                    />
-                    <div className="row between center">
-                      <span
-                        className="mono"
-                        style={{ fontSize: 10, color: "var(--muted)" }}
-                      >
-                        30 dias
-                      </span>
-                      <span
-                        className="mono"
-                        style={{
-                          fontSize: 11,
-                          fontWeight: 600,
-                          color: c.mo >= 0 ? "var(--up)" : "var(--down)",
-                        }}
-                      >
-                        {c.mo >= 0 ? "+" : ""}
-                        {c.mo.toFixed(1)}%
-                      </span>
-                    </div>
-                  </div>
-                </div>
+                    {w.cta} <IconArrow />
+                  </span>
+                </Link>
               );
             })}
           </div>
         </section>
 
-        {/* ════════════════ PULSO DO MERCADO ════════════════ */}
+        {/* ════════════════ TERMÔMETRO DO MERCADO ════════════════ */}
         <section style={{ marginBottom: 48 }}>
-          <div
-            className="card card-pad"
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-            }}
-          >
-            <div className="row between center">
-              <div className="row center" style={{ gap: 10 }}>
-                <span className="tag tag-violet">
-                  <IconChart /> Pulso do mercado
-                </span>
-                <span
-                  style={{ fontSize: 13, color: "var(--text-2)" }}
-                >
-                  Maiores altas da semana
-                </span>
-              </div>
-              <Link
-                href="/mercado"
-                className="more"
-                style={{
-                  color: "var(--gold-2)",
-                  fontSize: "13.5px",
-                  fontWeight: 600,
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 5,
-                  textDecoration: "none",
-                }}
-              >
-                Ver tudo <IconArrow />
-              </Link>
+          <SectionHead
+            title="Termômetro do mercado"
+            subtitle="Cartas em movimento com Health Score — não é achismo, é dado."
+            moreLabel="Ver mercado completo"
+            moreHref="/mercado"
+          />
+          {trending.length === 0 ? (
+            <div
+              className="card card-pad"
+              style={{
+                textAlign: "center",
+                padding: "48px 24px",
+                color: "var(--muted)",
+              }}
+            >
+              {cardsLoading
+                ? "Carregando tendências..."
+                : `Nenhuma carta com preço encontrada para ${tcg}. Sincronizando dados de mercado...`}
             </div>
-
+          ) : (
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-                gap: 12,
+                gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))",
+                gap: 14,
               }}
             >
-              {pulse.length > 0 ? (
-                pulse.map((m, i) => {
-                const sparkPoints = genSpark(i + 10, true);
-                const tcgKey = m.tcg || "";
+              {trending.map((c) => {
+                const sparkData = genSpark(c.id.charCodeAt(1) || 1, c.mo >= 0);
+                const moveIcon =
+                  c.mo >= 0 ? (
+                    <IconUp style={{ color: "var(--up)" }} />
+                  ) : (
+                    <IconDown style={{ color: "var(--down)" }} />
+                  );
                 return (
-                  <div
-                    key={i}
-                    className="row center"
+                  <Link
+                    key={c.id}
+                    href={`/carta/${c.id}`}
+                    className="card card-pad col"
                     style={{
-                      gap: 12,
-                      padding: "12px 14px",
-                      background: "var(--surface)",
-                      borderRadius: "var(--r-sm)",
-                      minWidth: 0,
+                      gap: 10,
+                      textDecoration: "none",
+                      color: "inherit",
+                      borderColor: "var(--bg-3)",
                     }}
                   >
-                    {/* Sparkline */}
-                    <div style={{ flex: "0 0 auto" }}>
-                      <Sparkline
-                        points={sparkPoints}
-                        color="var(--up)"
-                        width={74}
-                        height={28}
-                      />
-                    </div>
-                    <div
-                      className="col grow"
-                      style={{ gap: 2, minWidth: 0 }}
-                    >
+                    <div className="row between center">
                       <span
                         style={{
-                          fontSize: 13,
                           fontWeight: 600,
+                          fontSize: 13.5,
                           whiteSpace: "nowrap",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
+                          flex: 1,
+                          minWidth: 0,
                         }}
                       >
-                        {m.name}
+                        {c.name}
                       </span>
-                      <span
-                        className="mono"
-                        style={{ fontSize: 10.5, color: "var(--muted)" }}
-                      >
-                        {m.set || ""} · {TCG_COLORS[tcgKey] ? (
-                          <span
-                            style={{
-                              display: "inline-block",
-                              width: 7,
-                              height: 7,
-                              borderRadius: "50%",
-                              background: TCG_COLORS[tcgKey],
-                              marginRight: 3,
-                              verticalAlign: "middle",
-                            }}
-                          />
-                        ) : null}
-                        {tcgKey}
+                      <TrendTag pct={c.mo} sm />
+                    </div>
+                    <div className="row between center">
+                      <span className="mono" style={{ fontSize: 16, fontWeight: 700 }}>
+                        {c.base > 0 ? fmt(c.base) : "R$ —"}
+                      </span>
+                      <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                        {c.set} · {c.rarity}
                       </span>
                     </div>
-                    <div className="col" style={{ gap: 1, alignItems: "flex-end", flex: "0 0 auto" }}>
-                      <span className="tag tag-up" style={{ fontSize: 11, padding: "2px 7px" }}>
-                        <IconUp /> +{m.pct.toFixed(1)}%
-                      </span>
-                      <span
-                        className="mono"
-                        style={{ fontSize: 11, color: "var(--muted)" }}
-                      >
-                        {fmt0(m.val)}
-                      </span>
-                    </div>
-                  </div>
+                    <Sparkline
+                      points={sparkData}
+                      color={c.mo >= 0 ? "var(--up)" : "var(--down)"}
+                      width={160}
+                      height={24}
+                    />
+                  </Link>
                 );
-              })
-            ) : (
-              <div style={{ textAlign: "center", padding: "20px 0", color: "var(--muted)", gridColumn: "1 / -1" }}>
-                {cardsLoading ? "Carregando..." : "Nenhum movimento de mercado no momento."}
-              </div>
-            )}
-            </div>
-          </div>
-        </section>
-
-        {/* ════════════════ MAIS BUSCADAS AGORA ════════════════ */}
-        <section style={{ marginBottom: 48 }}>
-          <SectionHead
-            title="Mais buscadas agora"
-            subtitle={`O que o pessoal está procurando em ${TCGS.find((t) => t.id === tcg)?.name || "Pokémon"}`}
-            moreLabel="Ver tudo"
-            moreHref="/comprar"
-          />
-
-          {/* TCG Switcher chips */}
-          <div className="tcgbar" style={{ marginBottom: 24 }}>
-            {TCGS.map((t) => (
-              <Chip
-                key={t.id}
-                active={tcg === t.id}
-                onClick={() => setTcg(t.id)}
-              >
-                {t.name}
-              </Chip>
-            ))}
-          </div>
-
-          {/* Card grid */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 20,
-            }}
-          >
-          {trending.length > 0 ? (
-            trending.map((c) => (
-              <Link
-                key={c.id}
-                href={`/carta/${c.id}`}
-                style={{ textDecoration: "none", color: "inherit" }}
-              >
-                <CardTile card={c} />
-              </Link>
-            ))
-          ) : (
-            <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 0", color: "var(--muted)" }}>
-              {cardsLoading ? "Carregando cartas..." : "Nenhuma carta encontrada."}
+              })}
             </div>
           )}
-          </div>
-        </section>
-
-        {/* ════════════════ PRODUTOS SELADOS ════════════════ */}
-        <section style={{ marginBottom: 48 }}>
-          <SectionHead
-            title="Produtos selados"
-            subtitle="Boxes, ETBs e coleções lacradas"
-            moreLabel="Ver todos"
-            moreHref="/comprar?cat=selado"
-          />
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: 20,
-            }}
-          >
-            {sealedProducts.length > 0 ? (
-              sealedProducts.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/comprar?cat=selado`}
-                  style={{ textDecoration: "none", color: "inherit" }}
-                >
-                  <ProductTile
-                    product={p}
-                    offers={3}
-                  />
-                </Link>
-              ))
-            ) : (
-              <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "40px 0", color: "var(--muted)" }}>
-                {productsLoading ? "Carregando produtos..." : "Nenhum produto selado disponível no momento."}
-              </div>
-            )}
-          </div>
         </section>
 
         {/* ════════════════ PARA LOJISTAS ════════════════ */}
         <section style={{ marginBottom: 48 }}>
           <div
-            className="card card-pad row between center wrapf"
+            className="card card-pad"
             style={{
+              display: "grid",
+              gridTemplateColumns: "1fr auto",
               gap: 24,
+              alignItems: "center",
+              borderColor: "var(--gold-bd)",
               background:
-                "linear-gradient(120deg, var(--teal-bg) 0%, transparent 55%)",
-              borderColor: "var(--teal-bd)",
+                "linear-gradient(120deg, var(--gold-bg), transparent 70%)",
             }}
           >
-            <div className="col" style={{ gap: 6 }}>
+            <div className="col" style={{ gap: 8 }}>
+              <span style={{ fontWeight: 700, fontSize: 18 }}>
+                Tem uma loja?
+              </span>
               <span
                 style={{
-                  fontFamily: "var(--fdisplay)",
-                  fontSize: 22,
-                  fontWeight: 700,
-                  letterSpacing: "-0.02em",
+                  fontSize: 14,
+                  color: "var(--text-2)",
+                  lineHeight: 1.5,
+                  maxWidth: 480,
                 }}
               >
-                Tem uma loja de TCG?
+                BuyList inteligente, gestão de estoque, CRM de jogador e
+                precificação automática. Feito pra quem vive de TCG.
               </span>
-              <p style={{ fontSize: 14, color: "var(--text-2)", maxWidth: 480, lineHeight: 1.5 }}>
-                Anuncie seu estoque, receba pedidos com compra protegida e
-                precifique automaticamente. Sem mensalidade — você só paga
-                quando vende.
-              </p>
             </div>
-            <Link
-              href="/lojista"
-              className="btn btn-teal btn-lg"
-              style={{ whiteSpace: "nowrap" }}
-            >
-              Tenho uma loja <IconArrow />
-            </Link>
+            <div className="row" style={{ gap: 10 }}>
+              <Link href="/lojista" className="btn btn-gold">
+                Abrir minha loja
+              </Link>
+              <Link href="/cadastrar" className="btn btn-ghost">
+                Falar com vendas
+              </Link>
+            </div>
           </div>
         </section>
       </div>
