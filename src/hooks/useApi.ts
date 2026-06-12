@@ -10,6 +10,7 @@ interface UseApiState<T> {
 
 const cache = new Map<string, { data: unknown; ts: number }>();
 const CACHE_TTL = 60_000; // 60 seconds
+const FETCH_TIMEOUT = 8000; // 8 seconds
 
 export function useApi<T>(path: string, options?: { skip?: boolean }): UseApiState<T> & { refetch: () => void } {
   const [state, setState] = useState<UseApiState<T>>({
@@ -18,6 +19,12 @@ export function useApi<T>(path: string, options?: { skip?: boolean }): UseApiSta
     error: null,
   });
   const mounted = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const fetchData = useCallback(async () => {
     // Check cache
@@ -29,6 +36,9 @@ export function useApi<T>(path: string, options?: { skip?: boolean }): UseApiSta
 
     setState((prev) => ({ ...prev, loading: true, error: null }));
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT);
+
     try {
       const base = process.env.NEXT_PUBLIC_API_BASE_URL || "https://tcghub.ai";
       const res = await fetch(`${base}${path}`, {
@@ -37,7 +47,9 @@ export function useApi<T>(path: string, options?: { skip?: boolean }): UseApiSta
           "Content-Type": "application/json",
           "X-Requested-With": "XMLHttpRequest",
         },
+        signal: controller.signal,
       });
+      clearTimeout(timeoutId);
       if (!res.ok) {
         throw new Error(`API ${path}: ${res.status}`);
       }
@@ -47,11 +59,15 @@ export function useApi<T>(path: string, options?: { skip?: boolean }): UseApiSta
         setState({ data: json as T, loading: false, error: null });
       }
     } catch (err: unknown) {
+      clearTimeout(timeoutId);
       if (mounted.current) {
+        const message = err instanceof Error
+          ? (err.name === "AbortError" ? "Tempo limite excedido" : err.message)
+          : "Erro desconhecido";
         setState({
           data: null,
           loading: false,
-          error: err instanceof Error ? err.message : "Unknown error",
+          error: message,
         });
       }
     }

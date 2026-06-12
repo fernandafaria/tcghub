@@ -86,8 +86,9 @@ export default function Home() {
   // Trending cards for "Termômetro do mercado"
   const trending = useMemo(() => {
     if (apiCards.length === 0) return [];
-    return [...apiCards]
-      .filter((c) => c.tcg === tcg)
+    const withPrice = apiCards.filter((c) => c.tcg === tcg && c.base > 0);
+    if (withPrice.length === 0) return [];
+    return [...withPrice]
       .sort((a, b) => b.base - a.base)
       .slice(0, 8);
   }, [tcg, apiCards]);
@@ -125,8 +126,8 @@ export default function Home() {
                 lineHeight: 1.0,
               }}
             >
-              <span className="holo-text">Sua coleção</span>{" "}
-              vale mais do que você imagina.
+              <span className="holo-text">Sua coleção</span>
+              {"vale mais do que você imagina."}
             </h1>
             <p
               style={{
