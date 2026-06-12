@@ -31,6 +31,7 @@ const NAV_PILLARS = [
     head: "O preço justo, sem chutar",
     items: [
       ["/mercado", "chart", "Preços e tendências", "Maiores altas, baixas e o índice do mercado"] as const,
+      ["/explorar", "star", "Explorar tendências", "Descubra altas, quedas e oportunidades"] as const,
       ["/carta", "tag", "Quanto vale uma carta", "Preço de mercado em reais, hoje"] as const,
       ["", "brain", "Médico de deck (IA)", "soon"] as const,
     ],
@@ -44,7 +45,7 @@ const NAV_PILLARS = [
     items: [
       ["/colecao", "grid", "Minha coleção", "Valor em R$ e o quanto falta de cada set"] as const,
       ["/colecoes", "layers", "Explorar coleções", "Cartas por set de cada TCG"] as const,
-      ["/colecao", "bell", "Alertas de preço", "A gente avisa quando vale vender"] as const,
+      ["/alertas", "bell", "Alertas de preço", "A gente avisa quando vale vender"] as const,
       ["", "users", "Decks e meta", "soon"] as const,
     ],
   },
@@ -52,7 +53,7 @@ const NAV_PILLARS = [
 
 const iconMap: Record<string, React.FC<{ className?: string }>> = {
   spark: IconSpark, cards: IconCards, shield: IconShield, tag: IconTag, store: IconStore,
-  chart: IconChart, grid: IconGrid, layers: IconLayers, bell: IconBell, users: IconUsers,
+  chart: IconChart, star: IconStar, grid: IconGrid, layers: IconLayers, bell: IconBell, users: IconUsers,
   brain: IconSpark,
 };
 
