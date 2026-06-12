@@ -127,7 +127,7 @@ export default function Home() {
               }}
             >
               <span className="holo-text">Sua coleção</span>
-              {"vale mais do que você imagina."}
+              {" vale mais do que você imagina."}
             </h1>
             <p
               style={{
