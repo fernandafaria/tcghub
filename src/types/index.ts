@@ -29,6 +29,7 @@ export interface Card {
   base: number;
   wk: number;
   mo: number;
+  img?: string;
   art: string;
   foil: boolean;
   meta: string;
