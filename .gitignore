@@ -33,6 +33,11 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# supabase secrets
+.supabase_key
+scripts/sync_tcgdex.py
+scripts/test_sync.py
+
 # vercel
 .vercel
 

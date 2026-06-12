@@ -310,9 +310,9 @@ export default function Home() {
                 const sparkData = genSpark(c.id.charCodeAt(1) || 1, c.mo >= 0);
                 const moveIcon =
                   c.mo >= 0 ? (
-                    <IconUp style={{ color: "var(--up)" }} />
+                    <span style={{ color: "var(--up)" }}><IconUp /></span>
                   ) : (
-                    <IconDown style={{ color: "var(--down)" }} />
+                    <span style={{ color: "var(--down)" }}><IconDown /></span>
                   );
                 return (
                   <Link

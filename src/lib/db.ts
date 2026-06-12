@@ -9,7 +9,6 @@ const pool = new Pool({
   max: 5,
   connectionTimeoutMillis: 5000,
   idleTimeoutMillis: 30000,
-  family: 4,
 });
 
 export function query(text: string, params?: any[]) {
