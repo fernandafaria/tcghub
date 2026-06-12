@@ -110,9 +110,19 @@ export default function BuscarPage() {
 
   // Rarity list from real data
   const rarities = useMemo(() => {
-    const set = new Set(allCards.map((c) => c.rarity));
-    return Array.from(set).sort(
-      (a, b) => (RARITY_ORDER[a.toLowerCase()] ?? 99) - (RARITY_ORDER[b.toLowerCase()] ?? 99)
+    const seen = new Set<string>();
+    const normalized = new Map<string, string>(); // lower → display
+    for (const c of allCards) {
+      const lower = c.rarity.toLowerCase();
+      if (!seen.has(lower)) {
+        seen.add(lower);
+        normalized.set(lower, c.rarity);
+      }
+    }
+    return Array.from(normalized.values()).sort(
+      (a, b) =>
+        (RARITY_ORDER[a.toLowerCase()] ?? 99) -
+        (RARITY_ORDER[b.toLowerCase()] ?? 99)
     );
   }, [allCards]);
 
