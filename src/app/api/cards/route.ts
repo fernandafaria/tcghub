@@ -35,7 +35,6 @@ export async function GET(req: NextRequest) {
         SELECT *
         FROM card_prices
         WHERE card_prices.slug = c.slug
-          AND card_prices.game_id = $1
         ORDER BY card_prices.price_date DESC
         LIMIT 1
       ) p ON true
