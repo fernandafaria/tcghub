@@ -34,11 +34,11 @@ const QUICK_STATS = [
 // ─── WHY CARDS ─────────────────────────────────────────────────────────────
 const WHY_CARDS = [
   {
-    icon: IconSpark,
-    title: "Saiba o que vale",
-    body: "Escaneie seu binder em segundos. Valuation com explicação — não é número solto, é o porquê.",
-    href: "/scanner",
-    cta: "Escanear agora",
+    icon: IconCards,
+    title: "Sua coleção em R$",
+    body: "Importe, escaneie ou cadastre suas cartas. Veja o valor total, progresso por set e o que falta completar.",
+    href: "/colecao",
+    cta: "Minha coleção",
     accent: "var(--gold-2)",
   },
   {
@@ -50,11 +50,11 @@ const WHY_CARDS = [
     accent: "var(--violet-2)",
   },
   {
-    icon: IconChart,
-    title: "Opere com inteligência",
-    body: "Para lojistas: BuyList automática, gestão de estoque, CRM de jogador. Margem calculada, não chutada.",
-    href: "/lojista",
-    cta: "Sou lojista",
+    icon: IconSpark,
+    title: "Descubra o acervo",
+    body: "256 mil cartas catalogadas em 15 TCGs. Busque por nome, set ou raridade — com preço em real.",
+    href: "/explorar",
+    cta: "Explorar",
     accent: "var(--teal-2)",
   },
 ];
@@ -364,44 +364,25 @@ export default function Home() {
           )}
         </section>
 
-        {/* ════════════════ PARA LOJISTAS ════════════════ */}
-        <section style={{ marginBottom: 48 }}>
+        {/* ════════════════ PARA LOJISTAS (secundário) ════════════════ */}
+        <section style={{ marginBottom: 48, opacity: 0.75 }}>
           <div
             className="card card-pad"
             style={{
               display: "grid",
               gridTemplateColumns: "1fr auto",
-              gap: 24,
+              gap: 16,
               alignItems: "center",
-              borderColor: "var(--gold-bd)",
-              background:
-                "linear-gradient(120deg, var(--gold-bg), transparent 70%)",
             }}
           >
-            <div className="col" style={{ gap: 8 }}>
-              <span style={{ fontWeight: 700, fontSize: 18 }}>
-                Tem uma loja?
-              </span>
-              <span
-                style={{
-                  fontSize: 14,
-                  color: "var(--text-2)",
-                  lineHeight: 1.5,
-                  maxWidth: 480,
-                }}
-              >
-                BuyList inteligente, gestão de estoque, CRM de jogador e
-                precificação automática. Feito pra quem vive de TCG.
+            <div>
+              <span style={{ fontSize: 13, color: "var(--muted)" }}>
+                Tem uma loja? Conheça o plano lojista — buyList, gestão de estoque, CRM.
               </span>
             </div>
-            <div className="row" style={{ gap: 10 }}>
-              <Link href="/lojista" className="btn btn-gold">
-                Abrir minha loja
-              </Link>
-              <Link href="/cadastrar" className="btn btn-ghost">
-                Falar com vendas
-              </Link>
-            </div>
+            <Link href="/lojista" className="btn btn-ghost btn-sm">
+              Sou lojista <IconArrow />
+            </Link>
           </div>
         </section>
       </div>

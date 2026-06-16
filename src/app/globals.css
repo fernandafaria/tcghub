@@ -89,8 +89,13 @@ html { scroll-behavior: smooth; }
   --text-2:    oklch(0.38 0.013 85);
   --muted:     oklch(0.52 0.015 85);
   --faint:     oklch(0.66 0.015 85);
+  /* brand — reduced luminance for light bg contrast (WCAG AA) */
+  --link:      oklch(0.50 0.10 80);
+  --gold:      oklch(0.55 0.12 70);
   --gold-2:    oklch(0.60 0.13 66);
+  --violet:    oklch(0.48 0.18 280);
   --violet-2:  oklch(0.52 0.18 280);
+  --teal:      oklch(0.46 0.10 195);
   --teal-2:    oklch(0.50 0.11 200);
   --gold-ink:  oklch(0.30 0.06 70);
   --sh-1: 0 1px 2px rgba(50,40,80,.08);
