@@ -516,6 +516,21 @@ textarea.field { resize: vertical; min-height: 120px; line-height: 1.55; }
 .deckline .dqbtn { width: 22px; height: 22px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); color: var(--text-2); font-family: var(--fmono); font-weight: 700; display: grid; place-items: center; font-size: 13px; }
 .deckline .dqbtn:hover { border-color: var(--border-2); }
 
+/* animated celebration badge (Alerta ATINGIDO, milestones) */
+.celebrate-badge {
+  animation: celebrate 2s ease-in-out infinite;
+}
+@keyframes celebrate {
+  0%, 100% {
+    box-shadow: 0 0 0 0 color-mix(in oklch, var(--up) 50%, transparent);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 8px color-mix(in oklch, var(--up) 0%, transparent);
+    transform: scale(1.04);
+  }
+}
+
 /* responsive */
 @media (max-width: 1080px) {
   .nav-links { display: none; }

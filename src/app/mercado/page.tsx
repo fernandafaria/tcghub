@@ -123,29 +123,73 @@ export default function MercadoPage() {
           {MARKET_INDEX.map((idx) => (
             <div
               key={idx.short}
-              className="card card-pad col"
-              style={{ gap: 8, borderColor: idx.trend ? "var(--up-bg)" : "var(--down-bg)" }}
+              className="card"
+              style={{
+                position: "relative",
+                overflow: "hidden",
+                padding: 20,
+                display: "flex",
+                flexDirection: "column",
+                gap: 12,
+                borderColor: "var(--border)",
+              }}
             >
+              {/* TCG color accent bar */}
+              <div
+                style={{
+                  position: "absolute",
+                  inset: "0 auto 0 0",
+                  width: 4,
+                  background: TCG_COLORS[idx.short],
+                  borderRadius: "var(--r-lg) 0 0 var(--r-lg)",
+                }}
+              />
+              {/* TCG color glow */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: -20,
+                  right: -20,
+                  width: 100,
+                  height: 100,
+                  borderRadius: "50%",
+                  background: `radial-gradient(circle, ${TCG_COLORS[idx.short]}22, transparent 70%)`,
+                  pointerEvents: "none",
+                }}
+              />
               <div className="row between center">
-                <span style={{ fontWeight: 600, fontSize: 14 }}>{idx.tcg}</span>
+                <div className="row center" style={{ gap: 8 }}>
+                  <span
+                    className="mono"
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: TCG_COLORS[idx.short],
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    {idx.short}
+                  </span>
+                  <span style={{ fontWeight: 600, fontSize: 14 }}>{idx.tcg}</span>
+                </div>
                 <span className={`tag ${idx.trend ? "tag-up" : "tag-down"}`}>
                   {idx.trend ? <IconUp /> : <IconDown />}
                   {idx.change >= 0 ? "+" : ""}{idx.change.toFixed(1)}%
                 </span>
               </div>
-              <div>
-                <span className="mono" style={{ fontSize: 22, fontWeight: 700, color: idx.trend ? "var(--up)" : "var(--down)" }}>
+              <div style={{ zIndex: 1 }}>
+                <span className="mono" style={{ fontSize: 28, fontWeight: 800 }}>
                   {fmt0(idx.avg)}
                 </span>
-                <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 6 }}>
+                <span style={{ fontSize: 11, color: "var(--muted)", marginLeft: 8 }}>
                   preço médio
                 </span>
               </div>
               <Sparkline
                 points={genSpark(idx.short.charCodeAt(0), idx.trend)}
-                color={idx.trend ? "var(--up)" : "var(--down)"}
-                width={100}
-                height={24}
+                color={TCG_COLORS[idx.short]}
+                width={120}
+                height={28}
               />
             </div>
           ))}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { CARDS } from "@/data";
 import { fmt, fmt0, TrendTag } from "@/components/ui";
 import { IconBell, IconTrash, IconUp, IconDown, IconArrow } from "@/components/icons";
@@ -22,6 +23,19 @@ interface AlertaItem {
 function gerarAlertasMock(): AlertaItem[] {
   const pool = CARDS.slice(0, 10);
   const statuses: AlertaItem["status"][] = ["ativo", "atingido", "pausado", "ativo", "ativo", "atingido", "ativo", "pausado", "ativo", "ativo"];
+  // Distribute across "Hoje", "Ontem", and "Esta semana" for grouping
+  const dates = [
+    "16 de junho de 2026",  // hoje
+    "15 de junho de 2026",  // ontem  
+    "15 de junho de 2026",  // ontem
+    "14 de junho de 2026",  // esta semana
+    "13 de junho de 2026",  // esta semana
+    "12 de junho de 2026",  // esta semana
+    "10 de junho de 2026",  // esta semana
+    "10 de junho de 2026",  // esta semana
+    "8 de junho de 2026",   // esta semana
+    "5 de junho de 2026",   // esta semana
+  ];
   return pool.map((c, i) => {
     const dir = i % 2 === 0 ? "acima" : "abaixo";
     const target = dir === "acima" ? c.base * (1.1 + i * 0.05) : c.base * (0.85 - i * 0.02);
@@ -35,10 +49,31 @@ function gerarAlertasMock(): AlertaItem[] {
       targetPrice: Math.round(target * 100) / 100,
       currentPrice: c.base,
       status: statuses[i],
-      createdAt: `${10 - i} de junho de 2026`,
+      createdAt: dates[i],
       direction: dir,
     };
   });
+}
+
+// ─── Date grouping ─────────────────────────────────────────────────────────
+
+type DateGroup = "Hoje" | "Ontem" | "Esta semana";
+
+function getDateGroup(dateStr: string): DateGroup {
+  if (dateStr.includes("16 de junho")) return "Hoje";
+  if (dateStr.includes("15 de junho")) return "Ontem";
+  return "Esta semana";
+}
+
+function groupByDate(alerts: AlertaItem[]): Map<DateGroup, AlertaItem[]> {
+  const map = new Map<DateGroup, AlertaItem[]>();
+  map.set("Hoje", []);
+  map.set("Ontem", []);
+  map.set("Esta semana", []);
+  for (const a of alerts) {
+    map.get(getDateGroup(a.createdAt))!.push(a);
+  }
+  return map;
 }
 
 export default function AlertasPage() {
@@ -50,6 +85,8 @@ export default function AlertasPage() {
     if (filtro === "todos") return true;
     return a.status === filtro;
   });
+
+  const grouped = groupByDate(filtered);
 
   const togglePause = (id: string) => {
     setAlerts((prev) =>
@@ -113,145 +150,166 @@ export default function AlertasPage() {
           ))}
         </div>
 
-        {/* Alert list */}
+        {/* Alert list — grouped by date */}
         {filtered.length > 0 ? (
           <div className="col gap-12" style={{ marginBottom: 40 }}>
-            {filtered.map((a) => {
-              const diff = a.currentPrice - a.targetPrice;
-              const diffPct = a.targetPrice > 0 ? (diff / a.targetPrice) * 100 : 0;
-              const isReached = a.status === "atingido";
-
+            {(["Hoje", "Ontem", "Esta semana"] as DateGroup[]).map((group) => {
+              const items = grouped.get(group);
+              if (!items || items.length === 0) return null;
               return (
-                <div
-                  key={a.id}
-                  className="card card-pad"
-                  style={{
-                    borderColor: isReached ? "var(--up-bg)" : a.status === "ativo" ? "var(--gold-bd)" : "var(--border)",
-                    background: isReached ? "color-mix(in oklch, var(--up) 6%, var(--card))" : undefined,
-                  }}
-                >
-                  <div className="row center" style={{ gap: 16 }}>
-                    {/* Card image */}
-                    <div
-                      className={`cardimg ${a.cardArt} ${a.cardFoil ? "foil" : ""}`}
+                <div key={group} className="col" style={{ gap: 8 }}>
+                  {/* Date header — Monzo-style */}
+                  <div style={{ padding: "0 4px" }}>
+                    <span
+                      className="mono"
                       style={{
-                        width: 56,
-                        aspectRatio: "2.5/3.5",
-                        borderRadius: 7,
-                        flex: "0 0 auto",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: group === "Hoje" ? "var(--gold-2)" : "var(--muted)",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.08em",
                       }}
                     >
-                      <div className="shine" />
-                    </div>
-
-                    {/* Info */}
-                    <div className="col grow" style={{ gap: 4, minWidth: 0 }}>
-                      <div className="row center between" style={{ gap: 8 }}>
-                        <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {a.cardName}
-                        </span>
-                        {/* Status badge */}
-                        {isReached && (
-                          <span
-                            className="tag tag-up"
-                            style={{
-                              fontSize: 11,
-                              padding: "3px 10px",
-                              fontWeight: 700,
-                              letterSpacing: "0.04em",
-                              animation: "pulse 2s infinite",
-                            }}
-                          >
-                            ATINGIDO
-                          </span>
-                        )}
-                        {a.status === "pausado" && (
-                          <span className="tag tag-neutral" style={{ fontSize: 11 }}>
-                            Pausado
-                          </span>
-                        )}
-                      </div>
-                      <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
-                        {a.cardSet}
-                      </span>
-
-                      {/* Price info */}
-                      <div className="row" style={{ gap: 24, marginTop: 8 }}>
-                        <div className="col" style={{ gap: 2 }}>
-                          <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                            {a.direction === "acima" ? "Alvo (acima de)" : "Alvo (abaixo de)"}
-                          </span>
-                          <span className="mono" style={{ fontSize: 15, fontWeight: 700 }}>
-                            {fmt(a.targetPrice)}
-                          </span>
-                        </div>
-                        <div className="col" style={{ gap: 2 }}>
-                          <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                            Preco atual
-                          </span>
-                          <span className="mono" style={{ fontSize: 15, fontWeight: 700 }}>
-                            {fmt(a.currentPrice)}
-                          </span>
-                        </div>
-                        <div className="col" style={{ gap: 2 }}>
-                          <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                            Diferenca
-                          </span>
-                          <span
-                            className="mono"
-                            style={{
-                              fontSize: 15,
-                              fontWeight: 700,
-                              color: diffPct >= 0 ? "var(--up)" : "var(--down)",
-                            }}
-                          >
-                            {diffPct >= 0 ? "+" : ""}{diffPct.toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-
-                      <span style={{ fontSize: 11, color: "var(--faint)", marginTop: 2 }}>
-                        Criado em {formatDate(a.createdAt)}
-                      </span>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="row center" style={{ gap: 8, flexShrink: 0 }}>
-                      <button
-                        className="btn btn-ghost btn-sm"
-                        onClick={() => togglePause(a.id)}
-                        title={a.status === "pausado" ? "Retomar alerta" : "Pausar alerta"}
-                      >
-                        {a.status === "pausado" ? "Retomar" : "Pausar"}
-                      </button>
-                      {confirmDelete === a.id ? (
-                        <div className="row center" style={{ gap: 6 }}>
-                          <button
-                            className="btn btn-sm"
-                            style={{ color: "var(--down)", borderColor: "var(--down)" }}
-                            onClick={() => deleteAlert(a.id)}
-                          >
-                            Confirmar
-                          </button>
-                          <button
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => setConfirmDelete(null)}
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          className="btn btn-ghost btn-sm"
-                          onClick={() => setConfirmDelete(a.id)}
-                          title="Remover alerta"
-                          style={{ color: "var(--faint)" }}
-                        >
-                          <IconTrash />
-                        </button>
-                      )}
-                    </div>
+                      {group}
+                    </span>
                   </div>
+                  {items.map((a) => {
+                    const diff = a.currentPrice - a.targetPrice;
+                    const diffPct = a.targetPrice > 0 ? (diff / a.targetPrice) * 100 : 0;
+                    const isReached = a.status === "atingido";
+
+                    return (
+                      <div
+                        key={a.id}
+                        className="card card-pad"
+                        style={{
+                          borderColor: isReached ? "var(--up-bg)" : a.status === "ativo" ? "var(--gold-bd)" : "var(--border)",
+                          background: isReached ? "color-mix(in oklch, var(--up) 6%, var(--card))" : undefined,
+                        }}
+                      >
+                        <div className="row center" style={{ gap: 16 }}>
+                          {/* Card image */}
+                          <div
+                            className={`cardimg ${a.cardArt} ${a.cardFoil ? "foil" : ""}`}
+                            style={{
+                              width: 56,
+                              aspectRatio: "2.5/3.5",
+                              borderRadius: 7,
+                              flex: "0 0 auto",
+                            }}
+                          >
+                            <div className="shine" />
+                          </div>
+
+                          {/* Info */}
+                          <div className="col grow" style={{ gap: 4, minWidth: 0 }}>
+                            <div className="row center between" style={{ gap: 8 }}>
+                              <span style={{ fontSize: 14, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {a.cardName}
+                              </span>
+                              {/* Status badge */}
+                              {isReached && (
+                                <span
+                                  className="tag tag-up celebrate-badge"
+                                  style={{
+                                    fontSize: 11,
+                                    padding: "3px 10px",
+                                    fontWeight: 700,
+                                    letterSpacing: "0.04em",
+                                  }}
+                                >
+                                  ATINGIDO ✨
+                                </span>
+                              )}
+                              {a.status === "pausado" && (
+                                <span className="tag tag-neutral" style={{ fontSize: 11 }}>
+                                  Pausado
+                                </span>
+                              )}
+                            </div>
+                            <span className="mono" style={{ fontSize: 11, color: "var(--muted)" }}>
+                              {a.cardSet}
+                            </span>
+
+                            {/* Price info */}
+                            <div className="row" style={{ gap: 24, marginTop: 8 }}>
+                              <div className="col" style={{ gap: 2 }}>
+                                <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                                  {a.direction === "acima" ? "Alvo (acima de)" : "Alvo (abaixo de)"}
+                                </span>
+                                <span className="mono" style={{ fontSize: 15, fontWeight: 700 }}>
+                                  {fmt(a.targetPrice)}
+                                </span>
+                              </div>
+                              <div className="col" style={{ gap: 2 }}>
+                                <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                                  Preco atual
+                                </span>
+                                <span className="mono" style={{ fontSize: 15, fontWeight: 700 }}>
+                                  {fmt(a.currentPrice)}
+                                </span>
+                              </div>
+                              <div className="col" style={{ gap: 2 }}>
+                                <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                                  Diferenca
+                                </span>
+                                <span
+                                  className="mono"
+                                  style={{
+                                    fontSize: 15,
+                                    fontWeight: 700,
+                                    color: diffPct >= 0 ? "var(--up)" : "var(--down)",
+                                  }}
+                                >
+                                  {diffPct >= 0 ? "+" : ""}{diffPct.toFixed(1)}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="row center" style={{ gap: 8, flexShrink: 0 }}>
+                            {isReached ? (
+                              <Link href={`/carta/${a.cardId}`} className="btn btn-gold btn-sm">
+                                <IconArrow /> Ver no mercado
+                              </Link>
+                            ) : (
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => togglePause(a.id)}
+                                title={a.status === "pausado" ? "Retomar alerta" : "Pausar alerta"}
+                              >
+                                {a.status === "pausado" ? "Retomar" : "Pausar"}
+                              </button>
+                            )}
+                            {confirmDelete === a.id ? (
+                              <div className="row center" style={{ gap: 6 }}>
+                                <button
+                                  className="btn btn-sm"
+                                  style={{ color: "var(--down)", borderColor: "var(--down)" }}
+                                  onClick={() => deleteAlert(a.id)}
+                                >
+                                  Confirmar
+                                </button>
+                                <button className="btn btn-ghost btn-sm" onClick={() => setConfirmDelete(null)}>
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                className="btn btn-ghost btn-sm"
+                                onClick={() => setConfirmDelete(a.id)}
+                                title="Remover alerta"
+                                style={{ color: "var(--faint)" }}
+                              >
+                                <IconTrash />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
