@@ -38,6 +38,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="TCGHub" />
+        <meta name="impact-site-verification" content="73791384-934b-4df8-bd8d-6cd3aebb22c8" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body>
