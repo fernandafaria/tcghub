@@ -59,7 +59,7 @@ const iconMap: Record<string, React.FC<{ className?: string }>> = {
 
 export function Nav() {
   const [tcg, setTcg] = useState("pokemon");
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";

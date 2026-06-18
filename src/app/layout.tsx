@@ -31,12 +31,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" data-theme="light">
       <head>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <meta name="theme-color" content="#1a1225" />
+        <meta name="theme-color" content="#f7f6f2" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="TCGHub" />
         <meta name="impact-site-verification" content="73791384-934b-4df8-bd8d-6cd3aebb22c8" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
