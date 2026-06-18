@@ -3,24 +3,23 @@
 import Link from "next/link";
 import { useState } from "react";
 import {
-  IconSearch, IconCart, IconSpark, IconBell, IconChart, IconShield, IconBack, IconArrow,
-  IconDown, IconCheck, IconStore, IconTag, IconLayers, IconCards, IconGrid, IconStar, IconSun, IconMoon, IconPkg, IconUsers,
+  IconSearch, IconSpark, IconBell, IconChart, IconShield,
+  IconDown, IconCheck, IconStore, IconTag, IconLayers, IconCards, IconGrid, IconStar, IconSun, IconMoon, IconUsers,
 } from "@/components/icons";
 import { TCGS } from "@/data/cards";
 
 const NAV_PILLARS = [
   {
-    id: "com",
-    label: "Comprar",
-    desc: "Ache, compare e compre seguro",
-    dot: "var(--teal)",
-    head: "Tudo com proteção anti-golpe",
+    id: "cmn",
+    label: "Coleção",
+    desc: "Organize e veja quanto vale",
+    dot: "var(--gold)",
+    head: "Seu hobby, sempre atualizado",
     items: [
-      ["/comprar", "spark", "Montar deck pelo menor preço", "Selecione as cartas e a gente acha o frete mínimo"] as const,
-      ["/comprar", "cards", "Comprar cartas avulsas", "6 lojas verificadas, um preço comparado"] as const,
-      ["/checkout", "shield", "Compra protegida", "O dinheiro fica retido até você confirmar"] as const,
-      ["/vender", "tag", "Vender minhas cartas", "Anuncie sem CNPJ, sem cair em golpe"] as const,
-      ["/lojista", "store", "Tenho uma loja", "Estoque, preço automático e balcão"] as const,
+      ["/colecao", "grid", "Minha coleção", "Valor em R$ e o quanto falta de cada set"] as const,
+      ["/colecoes", "layers", "Explorar coleções", "Cartas por set de cada TCG"] as const,
+      ["/alertas", "bell", "Alertas de preço", "A gente avisa quando vale vender"] as const,
+      ["/scanner", "spark", "Escanear binder", "Scanner rápido com preço na hora"] as const,
     ],
   },
   {
@@ -37,16 +36,17 @@ const NAV_PILLARS = [
     ],
   },
   {
-    id: "cmn",
-    label: "Coleção",
-    desc: "Organize e veja quanto vale",
-    dot: "var(--gold)",
-    head: "Seu hobby, sempre atualizado",
+    id: "com",
+    label: "Comprar",
+    desc: "Ache, compare e compre seguro",
+    dot: "var(--teal)",
+    head: "Tudo com proteção anti-golpe",
     items: [
-      ["/colecao", "grid", "Minha coleção", "Valor em R$ e o quanto falta de cada set"] as const,
-      ["/colecoes", "layers", "Explorar coleções", "Cartas por set de cada TCG"] as const,
-      ["/alertas", "bell", "Alertas de preço", "A gente avisa quando vale vender"] as const,
-      ["", "users", "Decks e meta", "soon"] as const,
+      ["/comprar", "spark", "Montar deck pelo menor preço", "Selecione as cartas e a gente acha o frete mínimo"] as const,
+      ["/comprar", "cards", "Comprar cartas avulsas", "6 lojas verificadas, um preço comparado"] as const,
+      ["/checkout", "shield", "Compra protegida", "O dinheiro fica retido até você confirmar"] as const,
+      ["/vender", "tag", "Vender minhas cartas", "Anuncie sem CNPJ, sem cair em golpe"] as const,
+      ["/lojista", "store", "Tenho uma loja", "Estoque, preço automático e balcão"] as const,
     ],
   },
 ];
@@ -59,7 +59,6 @@ const iconMap: Record<string, React.FC<{ className?: string }>> = {
 
 export function Nav() {
   const [tcg, setTcg] = useState("pokemon");
-  const [cartCount] = useState(0);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   const toggleTheme = () => {
@@ -142,21 +141,14 @@ export function Nav() {
 
         {/* Right side */}
         <div className="nav-right">
-          <Link href="/comprar" className="nav-search">
+          <Link href="/buscar" className="nav-search">
             <span style={{ display: "inline-flex" }}><IconSearch className="ic" /></span>
             <span>Buscar carta…</span>
             <kbd>⌘K</kbd>
           </Link>
-          <Link href="/vender" className="nav-link" style={{ color: "var(--gold-2)", fontWeight: 600 }}>
-            Vender
-          </Link>
           <button className="nav-cart" onClick={toggleTheme} title="Tema claro/escuro">
             {theme === "dark" ? <IconSun className="ic" /> : <IconMoon className="ic" />}
           </button>
-          <Link href="/comprar" className="nav-cart">
-            <IconCart className="ic" />
-            {cartCount > 0 && <span className="badge">{cartCount}</span>}
-          </Link>
         </div>
       </div>
     </nav>
