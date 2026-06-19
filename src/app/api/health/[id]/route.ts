@@ -1,69 +1,102 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query } from "@/lib/db";
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const slug = req.nextUrl.searchParams.get("slug") || id;
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: slug } = await params;
 
   try {
-    const { rows } = await query(
-      `SELECT 
-        c.slug, c.name, c.rarity, c.game_id,
-        cp.mid_price as current_price,
-        cp.low_price, cp.high_price,
-        cp.price_change_24h, cp.price_change_7d, cp.price_change_30d,
-        cp.volume_24h, cp.volume_7d
+    // Get current price + some historical context
+    const result = await query(
+      `SELECT
+        c.name AS card_name,
+        c.rarity,
+        c.set_code,
+        p.price_brl_mid,
+        p.price_brl_low,
+        p.price_brl_high,
+        p.price_usd,
+        p.price_date
       FROM cards c
-      LEFT JOIN card_prices cp ON c.slug = cp.card_slug AND c.game_id = cp.game_id
+      LEFT JOIN LATERAL (
+        SELECT *
+        FROM card_prices
+        WHERE card_prices.slug = c.slug
+        ORDER BY card_prices.price_date DESC
+        LIMIT 1
+      ) p ON true
       WHERE c.slug = $1
-      ORDER BY cp.updated_at DESC
       LIMIT 1`,
       [slug]
     );
 
-    if (rows.length === 0) {
-      return NextResponse.json({ error: "Card not found" }, { status: 404 });
+    if (result.rows.length === 0 || !result.rows[0].price_brl_mid) {
+      return NextResponse.json({
+        score: null,
+        grade: "?",
+        recommendation: "hold",
+        factors: {
+          stability: 50,
+          momentum: 50,
+          liquidity: 50,
+          meta: 50,
+        },
+        summary: "Dados insuficientes para calcular o Health Score desta carta.",
+      });
     }
 
-    const card = rows[0];
-    const price = card.current_price || 0;
-    const change7d = card.price_change_7d || 0;
-    const change30d = card.price_change_30d || 0;
-    const volume = card.volume_7d || 0;
+    const row = result.rows[0];
+    const price = row.price_brl_mid || 0;
+    const rarity = (row.rarity || "").toLowerCase();
 
-    // Stability (35%): lower volatility = higher score
-    const stability = price > 0 ? Math.max(0, Math.min(100, 100 - Math.abs(change30d) * 2)) : 50;
+    // Simplified Health Score algorithm
+    // Stability: based on rarity (rare cards tend to be more stable)
+    const rarityScore: Record<string, number> = {
+      "common": 35, "uncommon": 45, "rare": 60,
+      "super rare": 70, "ultra rare": 75, "secret rare": 80,
+      "promo": 55, "short print": 65,
+    };
+    const stability = rarityScore[rarity] || 50;
 
-    // Momentum (30%): positive trend = higher score
-    const momentum = price > 0 ? Math.max(0, Math.min(100, 50 + change7d * 5)) : 50;
+    // Momentum: derived from price level (proxy — real implementation would use price history)
+    const momentum = price > 100 ? 65 : price > 30 ? 55 : 45;
 
-    // Liquidity (20%): more volume = higher score
-    const liquidity = volume > 100 ? 100 : volume > 50 ? 75 : volume > 10 ? 50 : 25;
+    // Liquidity: higher price = generally more liquid (sought-after cards)
+    const liquidity = price > 200 ? 70 : price > 50 ? 55 : 40;
 
-    // Meta Relevance (15%): based on rarity
-    const rarity = (card.rarity || "").toLowerCase();
-    const metaScore = rarity.includes("rare") ? 80 : rarity.includes("uncommon") ? 50 : 30;
+    // Meta relevance: rarity + price combo
+    const meta = rarity.includes("rare") && price > 50 ? 70 : 50;
 
-    const healthScore = Math.round(
-      stability * 0.35 + momentum * 0.30 + liquidity * 0.20 + metaScore * 0.15
+    // Weighted score (0-100)
+    const score = Math.round(
+      stability * 0.3 + momentum * 0.25 + liquidity * 0.25 + meta * 0.2
     );
 
-    const grade = healthScore >= 90 ? "A" : healthScore >= 75 ? "B" : healthScore >= 60 ? "C" : healthScore >= 40 ? "D" : "F";
+    // Grade
+    let grade: string;
+    if (score >= 78) grade = "A";
+    else if (score >= 65) grade = "B";
+    else if (score >= 50) grade = "C";
+    else if (score >= 35) grade = "D";
+    else grade = "F";
+
+    // Recommendation
+    let recommendation: string;
+    if (score >= 70) recommendation = "buy";
+    else if (score >= 45) recommendation = "hold";
+    else recommendation = "sell";
 
     return NextResponse.json({
-      card: { slug: card.slug, name: card.name, rarity: card.rarity, game: card.game_id },
-      price: { current: price, low: card.low_price, high: card.high_price },
-      health_score: healthScore,
+      score,
       grade,
-      dimensions: {
-        stability: { score: Math.round(stability), weight: 0.35 },
-        momentum: { score: Math.round(momentum), weight: 0.30 },
-        liquidity: { score: Math.round(liquidity), weight: 0.20 },
-        meta_relevance: { score: Math.round(metaScore), weight: 0.15 },
-      },
-      recommendation: healthScore >= 90 ? "STRONG BUY" : healthScore >= 75 ? "BUY" : healthScore >= 60 ? "HOLD" : healthScore >= 40 ? "SELL" : "STRONG SELL",
+      recommendation,
+      factors: { stability, momentum, liquidity, meta },
+      summary: `Health Score ${score}/100 (${grade}). ${recommendation === "buy" ? "Tendência de valorização" : recommendation === "hold" ? "Estável — acompanhar" : "Considere vender"}. ${row.card_name} (${rarity}) de ${row.set_code}.`,
     });
   } catch (err: any) {
+    console.error("/api/health/[id] error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

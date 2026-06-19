@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { CARDS, STORES, cardById } from "@/data";
 import type { Card, CardOffer } from "@/types";
@@ -74,6 +74,18 @@ export default function CardDetailClient({ initialCard }: Props) {
     [card]
   );
 
+  // Health Score
+  const [health, setHealth] = useState<{ score: number; grade: string; recommendation: string; factors: Record<string,number>; summary: string } | null>(null);
+  useEffect(() => {
+    fetch(`/api/health/${card.id}`)
+      .then(r => r.json())
+      .then(d => { if (d.score) setHealth(d); })
+      .catch(() => {});
+  }, [card.id]);
+
+  const recLabel: Record<string, string> = { buy: "Comprar", hold: "Manter", sell: "Vender" };
+  const recColor: Record<string, string> = { buy: "var(--up)", hold: "var(--gold)", sell: "var(--down)" };
+
   const handleBuy = (offer: CardOffer) => {
     toast(`${card.name} (${offer.cond}) adicionado ao carrinho — ${fmt(offer.price)}`);
     setAddedToCart(true);
@@ -114,17 +126,50 @@ export default function CardDetailClient({ initialCard }: Props) {
                 </div>
               </div>
               <div className="row between wrapf" style={{ gap: 12, padding: "10px 12px", background: "var(--surface)", borderRadius: "var(--r-sm)" }}>
-                <div className="stat"><span className="k">Preço base</span><span className="v">{fmt0(card.base)}</span></div>
-                <div className="stat"><span className="k">7 dias</span><span className="v" style={{ color: card.wk >= 0 ? "var(--up)" : "var(--down)" }}>{card.wk >= 0 ? "+" : ""}{card.wk.toFixed(1)}%</span></div>
-                <div className="stat"><span className="k">30 dias</span><span className="v" style={{ color: card.mo >= 0 ? "var(--up)" : "var(--down)" }}>{card.mo >= 0 ? "+" : ""}{card.mo.toFixed(1)}%</span></div>
+                <div className="stat"><span className="k">Preço base</span><span className="v">{card.base > 0 ? fmt0(card.base) : "—"}</span></div>
+                <div className="stat"><span className="k">7 dias</span><span className="v" style={{ color: card.wk >= 0 ? "var(--up)" : "var(--down)" }}>{card.wk !== 0 ? `${card.wk >= 0 ? "+" : ""}${card.wk.toFixed(1)}%` : "—"}</span></div>
+                <div className="stat"><span className="k">30 dias</span><span className="v" style={{ color: card.mo >= 0 ? "var(--up)" : "var(--down)" }}>{card.mo !== 0 ? `${card.mo >= 0 ? "+" : ""}${card.mo.toFixed(1)}%` : "—"}</span></div>
               </div>
-              <div className="col" style={{ gap: 6, padding: "12px", background: "var(--violet-bg)", borderRadius: "var(--r-sm)", border: "1px solid var(--violet-bd)" }}>
-                <div className="row center" style={{ gap: 7 }}>
-                  <span style={{ color: "var(--violet-2)", display: "inline-flex" }}><IconBrain className="ic" /></span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--violet-2)" }}>Análise de meta</span>
+
+              {/* Health Score */}
+              {health && (
+                <div className="row between center" style={{ gap: 14, padding: "14px 16px", background: "var(--bg-2)", borderRadius: "var(--r-sm)" }}>
+                  <div className="col" style={{ gap: 2, alignItems: "center" }}>
+                    <span className="mono" style={{ fontSize: 32, fontWeight: 800, color: health.score >= 70 ? "var(--up)" : health.score >= 45 ? "var(--gold-2)" : "var(--down)" }}>
+                      {health.score}
+                    </span>
+                    <span style={{ fontSize: 10, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Health Score</span>
+                  </div>
+                  <div className="col grow" style={{ gap: 6 }}>
+                    <div className="row center" style={{ gap: 8 }}>
+                      <span className="tag" style={{ background: recColor[health.recommendation] + "22", color: recColor[health.recommendation], borderColor: recColor[health.recommendation] + "44", fontWeight: 700 }}>
+                        {recLabel[health.recommendation]}
+                      </span>
+                      <span className="mono" style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>Nota {health.grade}</span>
+                    </div>
+                    <div className="row" style={{ gap: 12 }}>
+                      {Object.entries(health.factors).map(([k, v]) => (
+                        <div key={k} className="col" style={{ gap: 2, alignItems: "center" }}>
+                          <div className="bar" style={{ width: 40, height: 3 }}>
+                            <i style={{ width: `${v}%`, background: "var(--violet)" }} />
+                          </div>
+                          <span className="mono" style={{ fontSize: 9, color: "var(--muted)", textTransform: "uppercase" }}>{k.slice(0,4)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <p style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.55 }}>{card.meta || "Sem análise disponível para esta carta."}</p>
-              </div>
+              )}
+
+              {!health && (
+                <div className="col" style={{ gap: 6, padding: "12px", background: "var(--violet-bg)", borderRadius: "var(--r-sm)", border: "1px solid var(--violet-bd)" }}>
+                  <div className="row center" style={{ gap: 7 }}>
+                    <span style={{ color: "var(--violet-2)", display: "inline-flex" }}><IconBrain className="ic" /></span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--violet-2)" }}>Análise de meta</span>
+                  </div>
+                  <p style={{ fontSize: 12.5, color: "var(--text-2)", lineHeight: 1.55 }}>{card.meta || "Sem análise disponível para esta carta."}</p>
+                </div>
+              )}
               <div className="row between wrapf" style={{ gap: 8 }}>
                 <span className="tag tag-neutral"><IconShield /> Compra protegida</span>
                 <span className="tag tag-neutral"><span className="mono">{storeCount}</span> lojas</span>
