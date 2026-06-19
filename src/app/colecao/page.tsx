@@ -1,12 +1,62 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { COLLECTION_SETS, COLLECTION_SUMMARY } from "@/data";
 import { fmt0 } from "@/components/ui";
 import { IconHeart, IconStar, IconBell, IconArrow, IconGrid, IconLayers } from "@/components/icons";
 
-// ─── Ghost slots for missing cards ──────────────────────────────
+// ─── localStorage keys ──────────────────────────────────────────
+const STORAGE_KEY = "tcghub:colecao:slugs";
+
+function loadSlugs(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+// ─── Valuation hook ──────────────────────────────────────────────
+interface ValuationData {
+  totalValue: number;
+  cardCount: number;
+  sets: { setCode: string; count: number; value: number }[];
+}
+
+function useCollectionValuation() {
+  const [data, setData] = useState<ValuationData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const slugs = loadSlugs();
+    if (slugs.length === 0) {
+      setData({ totalValue: 0, cardCount: 0, sets: [] });
+      setLoading(false);
+      return;
+    }
+
+    fetch("/api/collection/value", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slugs }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        setData(d);
+        setLoading(false);
+      })
+      .catch(() => {
+        setData(null);
+        setLoading(false);
+      });
+  }, []);
+
+  return { data, loading };
+}
+
+// ─── Ghost slots ────────────────────────────────────────────────
 function GhostSlots({ count }: { count: number }) {
   return (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -28,216 +78,143 @@ function GhostSlots({ count }: { count: number }) {
 type ActionState = Record<string, { wish: boolean; fut: boolean; fol: boolean }>;
 
 export default function ColecaoPage() {
+  const { data, loading } = useCollectionValuation();
   const [actions, setActions] = useState<ActionState>({});
 
   const toggle = (code: string, key: "wish" | "fut" | "fol") => {
     setActions((prev) => ({
       ...prev,
-      [code]: {
-        ...prev[code],
-        [key]: !(prev[code]?.[key] ?? false),
-      },
+      [code]: { ...prev[code], [key]: !(prev[code]?.[key] ?? false) },
     }));
   };
 
   const isOn = (code: string, key: "wish" | "fut" | "fol") =>
     actions[code]?.[key] ?? false;
 
-  const totalOwned = COLLECTION_SETS.reduce((s, set) => s + set.owned, 0);
-  const totalCards = COLLECTION_SETS.reduce((s, set) => s + set.total, 0);
-  const completionPct = Math.round((totalOwned / totalCards) * 100);
-  const totalValue = COLLECTION_SUMMARY.totalValue;
+  const totalValue = data?.totalValue || 0;
+  const cardCount = data?.cardCount || 0;
+  const sets = data?.sets || [];
+
+  if (loading) {
+    return (
+      <div className="page">
+        <div className="wrap" style={{ textAlign: "center", paddingTop: 80 }}>
+          <h1 style={{ fontFamily: "var(--fdisplay)", fontSize: 28, fontWeight: 700 }}>
+            Carregando sua coleção...
+          </h1>
+          <p style={{ color: "var(--muted)", marginTop: 12 }}>
+            Calculando valores com dados reais de mercado
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
       <div className="wrap">
-        {/* ════════════════ HEADER ════════════════ */}
+        {/* HEADER */}
         <div style={{ marginBottom: 32 }}>
           <div className="eyebrow" style={{ marginBottom: 8 }}>
             Minha coleção · TCGHub
           </div>
-          <h1
-            style={{
-              fontFamily: "var(--fdisplay)",
-              fontSize: "clamp(24px, 3vw, 34px)",
-              fontWeight: 700,
-              letterSpacing: "-0.02em",
-              marginBottom: 20,
-            }}
-          >
+          <h1 style={{ fontFamily: "var(--fdisplay)", fontSize: "clamp(24px, 3vw, 34px)", fontWeight: 700, letterSpacing: "-0.02em", marginBottom: 20 }}>
             <span className="holo-text">Seu tesouro</span> em R$
           </h1>
 
-          {/* Stats row */}
-          <div
-            className="card card-pad"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-              gap: 20,
-              borderColor: "var(--gold-bd)",
-              background: "linear-gradient(120deg, var(--gold-bg), transparent 60%)",
-            }}
-          >
+          <div className="card card-pad" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 20, borderColor: "var(--gold-bd)", background: "linear-gradient(120deg, var(--gold-bg), transparent 60%)" }}>
             <div className="stat col" style={{ gap: 4 }}>
               <span className="k">Valor total estimado</span>
               <span className="mono" style={{ fontSize: 26, color: "var(--gold-2)", fontWeight: 700 }}>
-                {fmt0(totalValue)}
-              </span>
-              <span className="tag tag-up" style={{ marginTop: 2, alignSelf: "flex-start" }}>
-                +{COLLECTION_SUMMARY.monthChange}% no mês
+                {totalValue > 0 ? fmt0(totalValue) : "R$ —"}
               </span>
             </div>
             <div className="stat col" style={{ gap: 4 }}>
-              <span className="k">Completo</span>
-              <span className="mono" style={{ fontSize: 26, fontWeight: 700 }}>
-                {completionPct}%
-              </span>
-              <span style={{ fontSize: 13, color: "var(--muted)" }}>
-                {totalOwned} de {totalCards} cartas
-              </span>
+              <span className="k">Cartas</span>
+              <span className="mono" style={{ fontSize: 26, fontWeight: 700 }}>{cardCount}</span>
             </div>
             <div className="stat col" style={{ gap: 4 }}>
               <span className="k">Sets</span>
-              <span className="mono" style={{ fontSize: 26, fontWeight: 700 }}>
-                {COLLECTION_SETS.length}
-              </span>
-              <span style={{ fontSize: 13, color: "var(--muted)" }}>
-                {COLLECTION_SUMMARY.foilCount} foils
-              </span>
-            </div>
-          </div>
-
-          {/* Overall progress bar */}
-          <div style={{ marginTop: 18 }}>
-            <div className="row between" style={{ marginBottom: 6, gap: 8 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>
-                Progresso geral da coleção
-              </span>
-              <span className="mono" style={{ fontSize: 13, color: "var(--gold-2)" }}>
-                {completionPct}%
-              </span>
-            </div>
-            <div className="bar" style={{ height: 9 }}>
-              <i style={{ width: `${completionPct}%` }} />
+              <span className="mono" style={{ fontSize: 26, fontWeight: 700 }}>{sets.length}</span>
             </div>
           </div>
         </div>
 
-        {/* ════════════════ SETS GRID ════════════════ */}
-        <div className="sec-head" style={{ marginBottom: 18 }}>
-          <div>
-            <h2>Seus sets</h2>
-            <div className="sub">{COLLECTION_SETS.length} coleções · 5 TCGs</div>
-          </div>
-        </div>
-
-        <div className="setgrid" style={{ marginBottom: 40 }}>
-          {COLLECTION_SETS.map((set) => {
-            const setPct = Math.round((set.owned / set.total) * 100);
-            const missing = set.total - set.owned;
-
-            return (
-              <div key={set.code} className="setcard" style={{ ["--sa" as string]: set.sa }}>
-                {/* Set head */}
-                <div className="sc-head">
-                  <span className="sc-code">{set.code}</span>
-                  <span
-                    style={{
-                      fontFamily: "var(--fdisplay)",
-                      fontSize: 15,
-                      fontWeight: 700,
-                      letterSpacing: "-0.01em",
-                      color: "var(--text)",
-                      textShadow: "0 1px 3px rgba(0,0,0,.4)",
-                    }}
-                  >
-                    {set.name}
-                  </span>
-                </div>
-
-                {/* Set body */}
-                <div className="sc-body">
-                  <div className="row between" style={{ gap: 8 }}>
-                    <span className="sc-name">{set.name}</span>
-                    <span className="mono" style={{ fontSize: 14, fontWeight: 700 }}>
-                      {set.owned}/{set.total}
-                    </span>
-                  </div>
-
-                  {/* Progress */}
-                  <div>
-                    <div className="row between" style={{ marginBottom: 4, gap: 8 }}>
-                      <span style={{ fontSize: 12, color: "var(--muted)" }}>{setPct}% completo</span>
-                      <span style={{ fontSize: 12, color: "var(--muted)" }}>Faltam {missing}</span>
-                    </div>
-                    <div className="bar" style={{ height: 7 }}>
-                      <i style={{ width: `${setPct}%` }} />
-                    </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="row between" style={{ gap: 8 }}>
-                    <div className="col" style={{ gap: 2 }}>
-                      <span className="mono" style={{ fontSize: 13, color: "var(--gold-2)", fontWeight: 600 }}>
-                        {fmt0(set.value)}
-                      </span>
-                      <span style={{ fontSize: 11, color: "var(--muted)" }}>Valor</span>
-                    </div>
-                    <div className="col" style={{ gap: 2 }}>
-                      <span className="mono" style={{ fontSize: 13, fontWeight: 600 }}>
-                        {set.foil}
-                      </span>
-                      <span style={{ fontSize: 11, color: "var(--muted)" }}>Foils</span>
-                    </div>
-                  </div>
-
-                  {/* Quick actions */}
-                  <div className="qa">
-                    <button
-                      className={isOn(set.code, "wish") ? "on wish" : ""}
-                      onClick={() => toggle(set.code, "wish")}
-                      title="Adicionar à lista de desejos"
-                    >
-                      <IconHeart className="ic" /> Wishlist
-                    </button>
-                    <button
-                      className={isOn(set.code, "fut") ? "on fut" : ""}
-                      onClick={() => toggle(set.code, "fut")}
-                      title="Marcar para investimento futuro"
-                    >
-                      <IconStar className="ic" /> Futuro
-                    </button>
-                    <button
-                      className={isOn(set.code, "fol") ? "on fol" : ""}
-                      onClick={() => toggle(set.code, "fol")}
-                      title="Acompanhar preço"
-                    >
-                      <IconBell className="ic" /> Track
-                    </button>
-                  </div>
-
-                  {/* Ghost slots */}
-                  {missing > 0 && <GhostSlots count={missing} />}
-                </div>
+        {/* SETS */}
+        {sets.length > 0 ? (
+          <>
+            <div className="sec-head" style={{ marginBottom: 18 }}>
+              <div>
+                <h2>Seus sets</h2>
+                <div className="sub">{sets.length} coleções</div>
               </div>
-            );
-          })}
-        </div>
+            </div>
 
-        {/* ════════════════ CTA ════════════════ */}
-        <div className="card card-pad" style={{ textAlign: "center", borderColor: "var(--gold-bd)" }}>
+            <div className="setgrid" style={{ marginBottom: 40 }}>
+              {sets.map((set) => {
+                return (
+                  <div key={set.setCode} className="setcard" style={{ ["--sa" as string]: "var(--violet)" }}>
+                    <div className="sc-head">
+                      <span className="sc-code">{set.setCode}</span>
+                    </div>
+                    <div className="sc-body">
+                      <div className="row between" style={{ gap: 8 }}>
+                        <span className="sc-name">{set.setCode}</span>
+                        <span className="mono" style={{ fontSize: 14, fontWeight: 700 }}>{set.count} cartas</span>
+                      </div>
+                      <div className="row between" style={{ gap: 8 }}>
+                        <div className="col" style={{ gap: 2 }}>
+                          <span className="mono" style={{ fontSize: 13, color: "var(--gold-2)", fontWeight: 600 }}>{fmt0(set.value)}</span>
+                          <span style={{ fontSize: 11, color: "var(--muted)" }}>Valor</span>
+                        </div>
+                      </div>
+                      <div className="qa">
+                        <button className={isOn(set.setCode, "wish") ? "on wish" : ""} onClick={() => toggle(set.setCode, "wish")}>
+                          <IconHeart className="ic" /> Wishlist
+                        </button>
+                        <button className={isOn(set.setCode, "fut") ? "on fut" : ""} onClick={() => toggle(set.setCode, "fut")}>
+                          <IconStar className="ic" /> Futuro
+                        </button>
+                        <button className={isOn(set.setCode, "fol") ? "on fol" : ""} onClick={() => toggle(set.setCode, "fol")}>
+                          <IconBell className="ic" /> Track
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="card card-pad" style={{ textAlign: "center" }}>
+            <div style={{ maxWidth: 440, margin: "0 auto" }}>
+              <div className="row center" style={{ gap: 8, justifyContent: "center", marginBottom: 12, color: "var(--gold-2)", opacity: 0.6 }}>
+                <IconGrid />
+              </div>
+              <h3 style={{ fontFamily: "var(--fdisplay)", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
+                Sua coleção está vazia
+              </h3>
+              <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 18 }}>
+                Adicione cartas à sua coleção para ver o valor total e acompanhar seus sets.
+              </p>
+              <Link href="/explorar" className="btn btn-gold btn-lg">
+                <IconArrow /> Explorar cartas
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* CTA */}
+        <div className="card card-pad" style={{ textAlign: "center", borderColor: "var(--gold-bd)", marginTop: 32 }}>
           <div style={{ maxWidth: 480, margin: "0 auto" }}>
             <div className="row center" style={{ gap: 8, justifyContent: "center", marginBottom: 8, color: "var(--gold-2)" }}>
-              <IconGrid />
-              <IconLayers />
+              <IconGrid /><IconLayers />
             </div>
             <h3 style={{ fontFamily: "var(--fdisplay)", fontSize: 20, fontWeight: 700, marginBottom: 8 }}>
               Descubra o que está em alta
             </h3>
             <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 18 }}>
-              Explore todas as coleções, veja o que falta e monitore o valor das suas
-              cartas em tempo real.
+              Explore todas as coleções, veja o que falta e monitore o valor das suas cartas em tempo real.
             </p>
             <Link href="/colecoes" className="btn btn-gold btn-lg">
               <IconArrow /> Explorar coleções
