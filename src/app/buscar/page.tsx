@@ -652,8 +652,8 @@ function BuscarContent() {
                 }}
               >
                 {hasQuery
-                  ? `Nenhuma carta corresponde a "${query}". Tente outro termo ou TCG.`
-                  : "Tente outros filtros ou termos de busca."}
+                  ? `Nenhuma carta encontrada para "${query}". Tente "Charizard", "Pikachu" ou mude o TCG.`
+                  : "Digite o nome de uma carta para buscar. Ex: Charizard, Pikachu, Blue-Eyes."}
               </p>
             </div>
           </div>
