@@ -4,7 +4,7 @@ import { Nav } from "@/components/Nav";
 import { Toaster } from "@/components/Toaster";
 
 export const metadata: Metadata = {
-  title: "TCGHub — Jogar, colecionar e investir em cartas",
+  title: "TCGHub — Jogar, colecionar e investir em cartas TCG no Brasil",
   description:
     "Compare preços entre lojas verificadas, receba alertas de valorização e compre protegido — Pokémon, Magic, Yu-Gi-Oh!, One Piece, Lorcana e mais.",
   keywords: [
@@ -12,13 +12,14 @@ export const metadata: Metadata = {
     "cartas", "compra", "venda", "preço", "deck", "coleção", "Brasil",
   ],
   openGraph: {
-    title: "TCGHub — Jogar, colecionar e investir em cartas",
+    title: "TCGHub — Jogar, colecionar e investir em cartas TCG no Brasil",
     description:
       "Compare preços entre lojas verificadas, receba alertas de valorização e compre protegido.",
     url: "https://tcghub.ai",
     siteName: "TCGHub",
     locale: "pt_BR",
     type: "website",
+    images: [{ url: "/icon-192.png", width: 192, height: 192 }],
   },
   manifest: "/manifest.json",
   robots: { index: true, follow: true },
