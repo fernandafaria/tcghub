@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCGHub — Quanto vale a sua?</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   TCGHub.ai — v9
+   Personal Intelligence · Simplicidade radical · Craft Work&Co
+   "Responder o que importa. Nada mais."
+   ═══════════════════════════════════════════════════════════════ */
+:root {
+  --bg:        oklch(0.982 0.002 92);
+  --bg-warm:   oklch(0.972 0.004 88);
+  --surface:   oklch(0.955 0.003 92);
+  --card:      #fff;
+  --border:    oklch(0.90 0.005 92);
+  --border-2:  oklch(0.84 0.007 92);
+  --text:      oklch(0.16 0.016 285);
+  --text-2:    oklch(0.32 0.018 285);
+  --muted:     oklch(0.48 0.018 285);
+  --faint:     oklch(0.66 0.016 285);
+  --magenta:   oklch(0.48 0.24 350);
+  --magenta-2: oklch(0.54 0.24 350);
+  --magenta-glow: color-mix(in oklch, var(--magenta) 35%, transparent);
+  --violet:    oklch(0.46 0.26 282);
+  --teal:      oklch(0.46 0.16 198);
+  --up:        oklch(0.56 0.22 155);
+  --down:      oklch(0.54 0.22 22);
+
+  --r-sm: 6px; --r-md: 10px; --r-lg: 16px; --r-xl: 24px; --r-pill: 999px;
+  --sh-card:  0 2px 12px -6px rgba(20,10,50,.08);
+  --sh-lift:  0 8px 30px -14px rgba(20,10,50,.14);
+  --sh-glow:  0 6px 24px -8px var(--magenta-glow);
+
+  --fdisplay: 'Bricolage Grotesque', system-ui, sans-serif;
+  --fbody:    'Hanken Grotesk', system-ui, sans-serif;
+  --fmono:    'JetBrains Mono', ui-monospace, monospace;
+
+  --maxw: 1100px;
+  --nav-h: 60px;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family: var(--fbody);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+/* noise grain */
+body::before {
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:9999;
+  opacity: .018;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 256px 256px;
+}
+a { color: var(--magenta); text-underline-offset:3px; text-decoration-thickness:1px; }
+a:hover { color: var(--magenta-2); }
+::selection { background: color-mix(in oklch, var(--magenta) 14%, transparent); }
+button { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+img { display:block; max-width:100%; }
+.mono { font-family:var(--fmono); font-feature-settings:"tnum"; letter-spacing:-0.01em; }
+.wrap { max-width:var(--maxw); margin:0 auto; padding:0 36px; }
+
+/* ═══ NAV — quase invisível ═══ */
+.nav {
+  position:sticky; top:0; z-index:200; height:var(--nav-h);
+  background: color-mix(in oklch, var(--bg) 94%, transparent);
+  backdrop-filter: blur(8px);
+}
+.nav-inner { max-width:var(--maxw); margin:0 auto; padding:0 36px; height:100%; display:flex; align-items:center; gap:24px; }
+.logo { display:flex; align-items:center; gap:7px; font-family:var(--fdisplay); font-weight:700; font-size:17px; letter-spacing:-0.03em; color:var(--text); text-decoration:none; }
+.logo .mark { width:22px; height:22px; border-radius:5px; display:grid; place-items:center; background:var(--magenta); color:#fff; font-weight:700; font-size:12px; }
+.nav-links { display:flex; align-items:center; gap:2px; }
+.nav-link { padding:6px 10px; border-radius:var(--r-sm); font-size:13px; font-weight:500; color:var(--muted); text-decoration:none; transition:.15s; }
+.nav-link:hover { color:var(--text); background:var(--surface); }
+.nav-right { margin-left:auto; }
+.nav-cta { padding:7px 14px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; background:var(--magenta); color:#fff; text-decoration:none; transition:.15s; }
+.nav-cta:hover { background:var(--magenta-2); }
+
+/* ═══ HERO — uma pergunta ═══ */
+.hero {
+  padding: 80px 0 64px;
+  display:flex; flex-direction:column; gap:48px;
+}
+.hero-question {
+  max-width: 720px;
+  font-family: var(--fdisplay);
+  font-size: clamp(36px, 5.8vw, 64px);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: .96;
+}
+.hero-question .accent { color: var(--magenta); }
+.hero-question .accent::after { content:""; display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--magenta); margin-left:2px; vertical-align:super; }
+
+.hero-answers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.hero-answer {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 28px 24px;
+  text-decoration: none;
+  color: inherit;
+  transition: .3s cubic-bezier(.16,1,.3,1);
+  display: flex; flex-direction: column; gap: 14px;
+}
+.hero-answer:hover {
+  border-color: var(--border-2);
+  box-shadow: var(--sh-lift);
+  transform: translateY(-2px);
+}
+.hero-answer .ha-question {
+  font-family: var(--fdisplay);
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.hero-answer .ha-question .hl { color: var(--magenta); }
+.hero-answer .ha-answer {
+  font-size: 14px;
+  color: var(--text-2);
+  line-height: 1.55;
+}
+.hero-answer .ha-metric {
+  display: flex; align-items: baseline; gap: 6px;
+  font-family: var(--fmono); font-size: 13px;
+  padding: 6px 10px; border-radius: var(--r-sm);
+  background: var(--surface);
+  align-self: flex-start;
+}
+.hero-answer .ha-metric .val { font-weight: 700; }
+.hero-answer .ha-metric .lbl { color: var(--muted); font-size: 11px; }
+
+/* ═══ STATS STRIP ═══ */
+.stats-strip {
+  display: flex; gap: 48px;
+  padding: 28px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.stat-item { display:flex; flex-direction:column; gap:2px; }
+.stat-item .sv { font-family: var(--fdisplay); font-size: 24px; font-weight: 700; letter-spacing:-0.02em; }
+.stat-item .sl { font-size: 11.5px; color: var(--muted); font-family:var(--fmono); text-transform:uppercase; letter-spacing:.1em; }
+
+/* ═══ SECTIONS ═══ */
+section { padding: 72px 0; }
+
+/* ═══ MOVEMENT SECTION ═══ */
+.movement-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; }
+.movement-card {
+  background: var(--card); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding: 18px; display:flex; flex-direction:column; gap:8px;
+  text-decoration:none; color:inherit; transition:.25s cubic-bezier(.16,1,.3,1);
+}
+.movement-card:hover { border-color:var(--border-2); box-shadow:var(--sh-card); }
+.movement-card .mc-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.movement-card .mc-name { font-family:var(--fdisplay); font-weight:700; font-size:15px; letter-spacing:-0.015em; }
+.movement-card .mc-tcg { font-size:10.5px; color:var(--muted); font-family:var(--fmono); }
+.movement-card .mc-price { font-family:var(--fmono); font-weight:700; font-size:18px; }
+.movement-card .mc-move { font-family:var(--fmono); font-size:13px; font-weight:700; }
+.movement-card .mc-reason { font-size:12.5px; color:var(--text-2); line-height:1.4; }
+
+/* ═══ HEALTH SCORE SECTION ═══ */
+.health-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.health-card {
+  background: var(--card); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding: 24px; display:flex; flex-direction:column; gap:14px;
+  text-decoration:none; color:inherit; transition:.25s cubic-bezier(.16,1,.3,1);
+}
+.health-card:hover { border-color:var(--border-2); box-shadow:var(--sh-card); }
+.health-card .hc-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.health-card .hc-name { font-family:var(--fdisplay); font-weight:700; font-size:17px; letter-spacing:-0.015em; }
+.health-card .hc-score-wrap { display:flex; align-items:center; gap:10px; }
+.health-card .hc-score { font-family:var(--fdisplay); font-size:42px; font-weight:700; letter-spacing:-0.03em; line-height:1; }
+.health-card .hc-score-label { font-size:11px; color:var(--muted); font-family:var(--fmono); text-transform:uppercase; letter-spacing:.08em; }
+.health-card .hc-bar { height:4px; border-radius:2px; background:var(--surface); overflow:hidden; }
+.health-card .hc-bar-fill { height:100%; border-radius:2px; }
+.health-card .hc-factors { display:flex; flex-wrap:wrap; gap:6px; }
+.health-card .hc-factor { font-size:11px; padding:3px 8px; border-radius:var(--r-pill); border:1px solid var(--border); color:var(--text-2); font-family:var(--fmono); }
+.health-card .hc-verdict { font-family:var(--fdisplay); font-size:14px; font-weight:700; align-self:flex-start; padding:6px 14px; border-radius:var(--r-pill); }
+
+/* ═══ SCANNER CTA ═══ */
+.scanner-cta {
+  background: var(--bg-warm);
+  border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 56px 48px;
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+  text-align: center;
+}
+.scanner-cta h3 { font-family:var(--fdisplay); font-size:clamp(24px,3.2vw,36px); font-weight:700; letter-spacing:-0.03em; }
+.scanner-cta p { font-size:16px; color:var(--text-2); max-width:480px; line-height:1.55; }
+.scanner-cta .btn { display:inline-flex; align-items:center; gap:8px; padding:16px 28px; border-radius:var(--r-md); font-size:15px; font-weight:600; background:var(--magenta); color:#fff; text-decoration:none; transition:.2s cubic-bezier(.16,1,.3,1); }
+.scanner-cta .btn:hover { background:var(--magenta-2); box-shadow:var(--sh-glow); transform:translateY(-1px); }
+
+/* ═══ BOTTOM ═══ */
+.bottom-strip {
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 12px;
+}
+.bottom-strip .bs-text { font-size: 13px; color: var(--muted); }
+.bottom-strip .bs-sources { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.bottom-strip .bs-source { font-size: 12px; color: var(--muted); display:flex; align-items:center; gap:4px; }
+.bottom-strip .bs-source .dot { width:5px; height:5px; border-radius:50%; background:var(--teal); }
+
+/* ═══ TAG ═══ */
+.tag { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:4px; font-size:10.5px; font-weight:600; font-family:var(--fmono); letter-spacing:0.02em; white-space:nowrap; }
+.tag-up { background: color-mix(in oklch, var(--up) 12%, transparent); color:var(--up); }
+.tag-down { background: color-mix(in oklch, var(--down) 12%, transparent); color:var(--down); }
+.tag-magenta { background: color-mix(in oklch, var(--magenta) 10%, transparent); color:var(--magenta); }
+
+/* ═══ MOBILE ═══ */
+@media (max-width:768px) {
+  .hero { padding:48px 0 40px; gap:32px; }
+  .hero-question { font-size:30px; }
+  .hero-answers { grid-template-columns:1fr; }
+  .stats-strip { gap:28px; flex-wrap:wrap; }
+  .movement-grid { grid-template-columns:repeat(2,1fr); }
+  .health-grid { grid-template-columns:1fr; }
+  .nav-links { display:none; }
+  .scanner-cta { padding:40px 24px; }
+  .wrap { padding:0 20px; }
+  section { padding:48px 0; }
+}
+@media (max-width:480px) {
+  .hero-question { font-size:26px; }
+  .movement-grid { grid-template-columns:1fr; }
+  .wrap { padding:0 16px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="logo"><span class="mark">T</span>TCGHub</a>
+    <div class="nav-links">
+      <a href="/explorar" class="nav-link">Explorar</a>
+      <a href="/mercado" class="nav-link">Mercado</a>
+      <a href="/colecao" class="nav-link">Coleção</a>
+    </div>
+    <div class="nav-right">
+      <a href="/scanner" class="nav-cta">Escanear binder</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- ═══ HERO: 1 pergunta + 3 respostas ═══ -->
+  <section class="hero" style="padding-top:80px;">
+    <h1 class="hero-question">
+      Quanto vale <span class="accent">a sua</span> coleção?
+    </h1>
+
+    <div class="hero-answers">
+      <!-- Card 1 -->
+      <a href="/colecao" class="hero-answer">
+        <div class="ha-question">Quanto vale <span class="hl">a sua</span> coleção?</div>
+        <div class="ha-answer">Importe, escaneie ou cadastre. A gente calcula o valor real em reais e mostra o que falta completar.</div>
+        <div class="ha-metric"><span class="val">R$ 12.847</span><span class="lbl">coleção média</span></div>
+      </a>
+      <!-- Card 2 -->
+      <a href="/mercado" class="hero-answer">
+        <div class="ha-question">Devo <span class="hl">vender</span> ou segurar?</div>
+        <div class="ha-answer">Health Score em cada carta. Tendências, alertas e recomendação Buy/Hold/Sell com dado real.</div>
+        <div class="ha-metric"><span class="val" style="color:var(--up);">+8%</span><span class="lbl">valorização este mês</span></div>
+      </a>
+      <!-- Card 3 -->
+      <a href="/explorar" class="hero-answer">
+        <div class="ha-question">O que está <span class="hl">subindo</span> agora?</div>
+        <div class="ha-answer">256 mil cartas em 15 TCGs. A gente conecta torneio com preço — e te avisa antes do mercado reagir.</div>
+        <div class="ha-metric"><span class="val">+22%</span><span class="lbl">Pikachu ex após NAIC</span></div>
+      </a>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="stats-strip">
+      <div class="stat-item"><span class="sv">256K+</span><span class="sl">Cartas</span></div>
+      <div class="stat-item"><span class="sv">15</span><span class="sl">TCGs</span></div>
+      <div class="stat-item"><span class="sv" style="color:var(--magenta);">BRL</span><span class="sl">Em reais</span></div>
+      <div class="stat-item"><span class="sv">90%</span><span class="sl">Health Score accuracy</span></div>
+    </div>
+  </section>
+
+  <!-- ═══ O QUE ESTÁ SUBINDO ═══ -->
+  <section>
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:20px;">
+      <div>
+        <div style="font-family:var(--fmono);font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:8px;">Agora</div>
+        <h2 style="font-family:var(--fdisplay);font-size:clamp(22px,2.8vw,30px);font-weight:700;letter-spacing:-0.025em;">O que está <span style="color:var(--magenta);">subindo</span></h2>
+      </div>
+    </div>
+    <div class="movement-grid">
+      <a href="/carta/pikachu-ex" class="movement-card">
+        <div class="mc-top"><span class="mc-name">Pikachu ex</span><span class="tag tag-up">+22%</span></div>
+        <span class="mc-tcg">Pokémon · Surging Sparks</span>
+        <span class="mc-price">R$ 342</span>
+        <span class="mc-move" style="color:var(--up);">↑ 22% em 7 dias</span>
+        <span class="mc-reason">Venceu o NAIC. Meta staple em 78% dos decks.</span>
+      </a>
+      <a href="/carta/elsa" class="movement-card">
+        <div class="mc-top"><span class="mc-name">Elsa — Spirit of Winter</span><span class="tag tag-up">+18%</span></div>
+        <span class="mc-tcg">Lorcana · The First Chapter</span>
+        <span class="mc-price">R$ 1.2K</span>
+        <span class="mc-move" style="color:var(--up);">↑ 18% em 30 dias</span>
+        <span class="mc-reason">Set fora de print. Demanda consistente desde outubro.</span>
+      </a>
+      <a href="/carta/charizard-ex" class="movement-card">
+        <div class="mc-top"><span class="mc-name">Charizard ex</span><span class="tag tag-up">+15%</span></div>
+        <span class="mc-tcg">Pokémon · Obsidian Flames</span>
+        <span class="mc-price">R$ 520</span>
+        <span class="mc-move" style="color:var(--up);">↑ 15% em 30 dias</span>
+        <span class="mc-reason">Charizard. Sempre Charizard. Mas desta vez com razão.</span>
+      </a>
+      <a href="/carta/blue-eyes" class="movement-card">
+        <div class="mc-top"><span class="mc-name">Blue-Eyes White Dragon</span><span class="tag tag-down">−5%</span></div>
+        <span class="mc-tcg">Yu‑Gi‑Oh! · LOB 1st Ed</span>
+        <span class="mc-price">R$ 3.4K</span>
+        <span class="mc-move" style="color:var(--down);">↓ 5% em 30 dias</span>
+        <span class="mc-reason">Reimpressão anunciada. Correção natural de mercado.</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ═══ HEALTH SCORE ═══ -->
+  <section>
+    <div style="display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:20px;">
+      <div>
+        <div style="font-family:var(--fmono);font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--muted);margin-bottom:8px;">Decisão</div>
+        <h2 style="font-family:var(--fdisplay);font-size:clamp(22px,2.8vw,30px);font-weight:700;letter-spacing:-0.025em;">Health Score: <span style="color:var(--magenta);">comprar</span>, segurar ou vender?</h2>
+      </div>
+    </div>
+    <div class="health-grid">
+      <a href="/carta/pikachu-ex" class="health-card">
+        <div class="hc-top"><span class="hc-name">Pikachu ex</span><span class="tag tag-up">+22%</span></div>
+        <div class="hc-score-wrap">
+          <span class="hc-score" style="color:var(--up);">91</span>
+          <span class="hc-score-label">Health<br>Score</span>
+        </div>
+        <div class="hc-bar"><div class="hc-bar-fill" style="width:91%;background:var(--up);"></div></div>
+        <div class="hc-factors">
+          <span class="hc-factor">Estabilidade 94</span>
+          <span class="hc-factor">Momentum 88</span>
+          <span class="hc-factor">Meta 97</span>
+          <span class="hc-factor">Liquidez 82</span>
+        </div>
+        <span class="hc-verdict" style="background:color-mix(in oklch, var(--up) 13%, transparent); color:var(--up);">Buy</span>
+      </a>
+      <a href="/carta/charizard-vmax" class="health-card">
+        <div class="hc-top"><span class="hc-name">Charizard VMAX</span><span class="tag tag-up">+12%</span></div>
+        <div class="hc-score-wrap">
+          <span class="hc-score" style="color:var(--up);">82</span>
+          <span class="hc-score-label">Health<br>Score</span>
+        </div>
+        <div class="hc-bar"><div class="hc-bar-fill" style="width:82%;background:var(--up);"></div></div>
+        <div class="hc-factors">
+          <span class="hc-factor">Estabilidade 78</span>
+          <span class="hc-factor">Momentum 85</span>
+          <span class="hc-factor">Meta 80</span>
+          <span class="hc-factor">Liquidez 86</span>
+        </div>
+        <span class="hc-verdict" style="background:color-mix(in oklch, var(--up) 13%, transparent); color:var(--up);">Buy</span>
+      </a>
+      <a href="/carta/blue-eyes" class="health-card">
+        <div class="hc-top"><span class="hc-name">Blue-Eyes White Dragon</span><span class="tag tag-down">−5%</span></div>
+        <div class="hc-score-wrap">
+          <span class="hc-score" style="color:var(--magenta);">58</span>
+          <span class="hc-score-label">Health<br>Score</span>
+        </div>
+        <div class="hc-bar"><div class="hc-bar-fill" style="width:58%;background:var(--magenta);"></div></div>
+        <div class="hc-factors">
+          <span class="hc-factor">Estabilidade 90</span>
+          <span class="hc-factor">Momentum 32</span>
+          <span class="hc-factor">Meta 60</span>
+          <span class="hc-factor">Liquidez 45</span>
+        </div>
+        <span class="hc-verdict" style="background:color-mix(in oklch, var(--magenta) 10%, transparent); color:var(--magenta);">Hold</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ═══ SCANNER CTA ═══ -->
+  <section style="padding-top:24px;">
+    <div class="scanner-cta">
+      <h3>Tem binder guardado?<br>Descubra o valor agora.</h3>
+      <p>Escaneie com a câmera, importe o CSV ou cadastre carta por carta.
+      A gente calcula tudo e te avisa quando valorizar.</p>
+      <a href="/scanner" class="btn">Escanear meu binder</a>
+    </div>
+  </section>
+
+  <!-- ═══ BOTTOM ═══ -->
+  <div class="bottom-strip">
+    <span class="bs-text">Preços em tempo real de</span>
+    <div class="bs-sources">
+      <span class="bs-source"><span class="dot"></span> TCGPlayer</span>
+      <span class="bs-source"><span class="dot"></span> Cardmarket</span>
+      <span class="bs-source"><span class="dot"></span> LigaPokémon</span>
+      <span class="bs-source"><span class="dot"></span> Scryfall</span>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

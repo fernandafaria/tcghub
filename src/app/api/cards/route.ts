@@ -4,11 +4,17 @@ import { query } from "@/lib/db";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const game = searchParams.get("game") || "pokemon";
+  const search = searchParams.get("search") || "";
   const page = parseInt(searchParams.get("page") || "1");
   const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 200);
   const offset = (page - 1) * limit;
 
   try {
+    const searchClause = search
+      ? `AND (c.name ILIKE $4 OR c.set_code ILIKE $4 OR c.collector_number ILIKE $4)`
+      : "";
+    const searchParam = search ? `%${search}%` : "";
+
     const result = await query(
       `SELECT
         c.slug AS card_slug,
@@ -38,15 +44,17 @@ export async function GET(req: NextRequest) {
         ORDER BY card_prices.price_date DESC
         LIMIT 1
       ) p ON true
-      WHERE c.game_id = $1
+      WHERE c.game_id = $1 ${searchClause}
       ORDER BY (p.price_brl_mid IS NOT NULL) DESC, p.price_brl_mid DESC NULLS LAST
       LIMIT $2 OFFSET $3`,
-      [game, limit, offset]
+      search ? [game, limit, offset, searchParam] : [game, limit, offset]
     );
 
     const countResult = await query(
-      `SELECT COUNT(*)::int FROM cards WHERE game_id = $1`,
-      [game]
+      search
+        ? `SELECT COUNT(*)::int FROM cards WHERE game_id = $1 AND (name ILIKE $2 OR set_code ILIKE $2 OR collector_number ILIKE $2)`
+        : `SELECT COUNT(*)::int FROM cards WHERE game_id = $1`,
+      search ? [game, searchParam] : [game]
     );
 
     return NextResponse.json({

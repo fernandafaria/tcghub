@@ -222,11 +222,15 @@ export function GameCard({
         <TypePips energy={card.energy} />
       </div>
       <div className={`gc-art ${card.foil ? "foil" : ""}`}>
-        <span className="ph">art</span>
+        {card.img ? (
+          <img src={card.img} alt={card.name} style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "inherit" }} />
+        ) : (
+          <span className="ph">art</span>
+        )}
       </div>
       <div className="gc-foot">
         <RarityGlyph rarity={card.rarity} label />
-        <span className="gc-price">{fmt0(card.base)}</span>
+        <span className="gc-price">{card.base > 0 ? fmt0(card.base) : "—"}</span>
       </div>
     </div>
   );
@@ -243,24 +247,30 @@ export function CardTile({
   return (
     <div className={`tile ${className ?? ""}`}>
       <div
-        className={`cardimg ${card.art} ${card.foil ? "foil" : ""}`}
-        style={{ boxShadow: "var(--sh-2)" }}
+        className={`cardimg ${card.foil ? "foil" : ""}`}
+        style={{ boxShadow: "var(--sh-2)", overflow: "hidden" }}
       >
-        <div className="shine" />
-        <div className="ph">
-          {card.name}
-          <br />· art ·
-        </div>
-        <div style={{ position: "absolute", top: 8, left: 8 }}>
-          <TypePips energy={card.energy} />
-        </div>
-        {card.foil && (
-          <div
-            style={{ position: "absolute", top: 8, right: 9 }}
-            className="rar holo-text"
-          >
-            <span className="gl">★</span>
-          </div>
+        {card.img ? (
+          <img src={card.img} alt={card.name} style={{ width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }} />
+        ) : (
+          <>
+            <div className="shine" />
+            <div className="ph">
+              {card.name}
+              <br />· art ·
+            </div>
+            <div style={{ position: "absolute", top: 8, left: 8 }}>
+              <TypePips energy={card.energy} />
+            </div>
+            {card.foil && (
+              <div
+                style={{ position: "absolute", top: 8, right: 9 }}
+                className="rar holo-text"
+              >
+                <span className="gl">★</span>
+              </div>
+            )}
+          </>
         )}
       </div>
       <div className="col gap-6">

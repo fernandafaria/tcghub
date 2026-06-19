@@ -18,6 +18,11 @@ const nextConfig: NextConfig = {
         destination: "/scanner",
         permanent: true,
       },
+      {
+        source: "/importar",
+        destination: "/colecao",
+        permanent: true,
+      },
     ];
   },
 };

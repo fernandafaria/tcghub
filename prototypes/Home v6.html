@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCGHub — Sua coleção vale mais do que você imagina</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ═════════════════════════════════════════════════════════════════
+   TCGHub.ai — Home v7 · Magenta foil, vibrante
+   ═════════════════════════════════════════════════════════════════ */
+:root {
+  --bg:        oklch(0.985 0.001 95);
+  --bg-2:      oklch(0.968 0.002 95);
+  --surface:   oklch(0.948 0.003 95);
+  --card:      #fff;
+  --card-2:    oklch(0.97 0.002 95);
+  --border:    oklch(0.895 0.004 95);
+  --border-2:  oklch(0.835 0.006 95);
+  --text:      oklch(0.20 0.014 280);
+  --text-2:    oklch(0.35 0.016 280);
+  --muted:     oklch(0.50 0.018 280);
+  --faint:     oklch(0.66 0.016 280);
+  --magenta:   oklch(0.52 0.22 350);
+  --magenta-2: oklch(0.58 0.22 350);
+  --magenta-bright: oklch(0.68 0.22 350);
+  --magenta-ink: oklch(0.35 0.16 350);
+  --violet:    oklch(0.50 0.24 282);
+  --violet-2:  oklch(0.56 0.24 280);
+  --teal:      oklch(0.50 0.15 198);
+  --teal-2:    oklch(0.55 0.16 198);
+  --up:        oklch(0.60 0.20 155);
+  --down:      oklch(0.58 0.20 22);
+  --link:      oklch(0.42 0.18 350);
+  --magenta-bg: color-mix(in oklch, var(--magenta) 12%, transparent);
+  --magenta-bd: color-mix(in oklch, var(--magenta) 28%, transparent);
+  --violet-bg: color-mix(in oklch, var(--violet) 11%, transparent);
+  --violet-bd: color-mix(in oklch, var(--violet) 26%, transparent);
+  --teal-bg:   color-mix(in oklch, var(--teal) 10%, transparent);
+  --teal-bd:   color-mix(in oklch, var(--teal) 24%, transparent);
+  --up-bg:     color-mix(in oklch, var(--up) 12%, transparent);
+  --down-bg:   color-mix(in oklch, var(--down) 12%, transparent);
+  --r-xs: 8px; --r-sm: 11px; --r-md: 14px; --r-lg: 20px; --r-xl: 28px; --r-pill: 999px;
+  --sh-1: 0 1px 2px rgba(30,20,60,.05);
+  --sh-2: 0 8px 28px -12px rgba(30,20,60,.12);
+  --sh-3: 0 24px 60px -22px rgba(30,20,60,.18);
+  --sh-glow: 0 10px 32px -12px color-mix(in oklch, var(--magenta) 40%, transparent);
+  --fdisplay: 'Bricolage Grotesque', system-ui, sans-serif;
+  --fbody: 'Hanken Grotesk', system-ui, sans-serif;
+  --fmono: 'JetBrains Mono', ui-monospace, monospace;
+  --nav-h: 70px;
+  --maxw: 1240px;
+  --holo: linear-gradient(110deg, #e04088 0%, #b860e0 26%, #6090f0 50%, #40c8a8 74%, #e04088 100%);
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  font-family: var(--fbody);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+img { display:block; max-width:100%; }
+a { color: var(--link); text-underline-offset:3px; text-decoration-thickness:1px; }
+a:hover { color: var(--magenta); }
+::selection { background: var(--magenta-bg); }
+button { font-family:inherit; cursor:pointer; border:none; background:none; color:inherit; }
+.mono { font-family:var(--fmono); font-feature-settings:"tnum"; letter-spacing:-0.01em; white-space:nowrap; }
+.wrap { max-width:var(--maxw); margin:0 auto; padding:0 28px; }
+.page { padding: 0 0 100px; }
+section { padding: 56px 0; position:relative; }
+section + section { border-top:1px solid var(--border); }
+
+/* ═══════ NAV ═══════ */
+.nav {
+  position:sticky; top:0; z-index:200; height:var(--nav-h);
+  background: color-mix(in oklch, var(--bg) 86%, transparent);
+  backdrop-filter: blur(18px) saturate(1.4);
+  border-bottom: 1px solid var(--border);
+}
+.nav-inner { max-width:var(--maxw); margin:0 auto; padding:0 28px; height:100%; display:flex; align-items:center; gap:22px; }
+.logo { display:flex; align-items:center; gap:9px; font-family:var(--fdisplay); font-weight:700; font-size:19px; letter-spacing:-0.02em; text-decoration:none; color:var(--text); }
+.logo .mark { width:28px; height:28px; border-radius:8px; display:grid; place-items:center; background:linear-gradient(150deg, var(--magenta), var(--magenta-bright)); color:var(--magenta-ink); font-weight:700; font-size:16px; box-shadow: var(--sh-glow); }
+.logo b { color: var(--magenta); font-weight:700; }
+.nav-links { display:flex; align-items:center; gap:4px; margin-left:8px; }
+.nav-link { display:flex; align-items:center; gap:7px; padding:8px 14px; border-radius:var(--r-sm); font-size:14px; font-weight:500; color:var(--muted); text-decoration:none; transition:.16s; white-space:nowrap; }
+.nav-link:hover { color:var(--text); background:var(--surface); }
+.nav-right { margin-left:auto; display:flex; align-items:center; gap:10px; }
+.nav-search {
+  display:flex; align-items:center; gap:8px; width:200px;
+  padding:8px 14px; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-pill); font-size:13px; color:var(--muted); cursor:text; transition:.16s;
+}
+.nav-search:hover { border-color:var(--border-2); }
+.nav-search span { white-space:nowrap; overflow:hidden; font-family:var(--fbody); }
+.nav-search kbd { margin-left:auto; font-family:var(--fmono); font-size:10px; background:var(--card); border:1px solid var(--border); border-radius:5px; padding:2px 6px; color:var(--faint); }
+
+/* ═══════ HERO — visual-first, emocional ═══════ */
+.hero {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:56px; align-items:center;
+  padding: 64px 0 56px; min-height:75vh;
+}
+.hero-left { display:flex; flex-direction:column; gap:24px; }
+.hero-eyebrow {
+  font-family:var(--fmono); font-size:11px; text-transform:uppercase;
+  letter-spacing:0.25em; color:var(--muted); font-weight:500;
+  display:flex; align-items:center; gap:10px;
+}
+.hero-eyebrow::before { content:""; width:28px; height:1px; background:var(--border-2); }
+.hero h1 { font-family:var(--fdisplay); font-size:clamp(38px, 5.6vw, 66px); font-weight:800; letter-spacing:-0.045em; line-height:.95; }
+.hero h1 .holo {
+  background: var(--holo); -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-size:200% auto;
+  animation: holoshift 6s ease-in-out infinite;
+}
+@keyframes holoshift { 0%,100% { background-position:0% center; } 50% { background-position:100% center; } }
+@media (prefers-reduced-motion:reduce) { .hero h1 .holo { animation:none; } }
+.hero h1 .gold { color:var(--magenta); }
+.hero-sub { font-size:18px; color:var(--text-2); max-width:460px; line-height:1.55; }
+.hero-sub strong { font-weight:600; color:var(--text); }
+
+.hero-actions { display:flex; gap:12px; flex-wrap:wrap; }
+.hero-stats { display:flex; gap:40px; }
+.hero-stat .hv { font-family:var(--fdisplay); font-size:28px; font-weight:700; letter-spacing:-0.02em; }
+.hero-stat .hl { font-size:12px; color:var(--muted); margin-top:2px; }
+
+/* ═══════ CARD FAN ═══════ */
+.cardfan { position:relative; height:520px; display:grid; place-items:center; }
+.cardfan .gc { position:absolute; transition:transform .5s cubic-bezier(.2,.8,.3,1); }
+.cardfan .c-left  { width:190px; transform:rotate(-13deg) translate(-115px, 22px) scale(.86); z-index:1; filter:brightness(.82) saturate(.88); }
+.cardfan .c-right { width:190px; transform:rotate(13deg) translate(115px, 22px) scale(.86); z-index:1; filter:brightness(.82) saturate(.88); }
+.cardfan .c-mid { width:270px; z-index:3; animation:floaty 6s ease-in-out infinite; }
+@media (hover:hover) {
+  .cardfan:hover .c-left  { transform:rotate(-16deg) translate(-142px, 10px) scale(.88); }
+  .cardfan:hover .c-right { transform:rotate(16deg) translate(142px, 10px) scale(.88); }
+}
+@keyframes floaty { 0%,100% { transform:translateY(0) rotate(-1deg); } 50% { transform:translateY(-18px) rotate(1.5deg); } }
+@media (prefers-reduced-motion:reduce) { .cardfan .c-mid { animation:none; } }
+
+/* game card */
+.gamecard {
+  position:relative; aspect-ratio:2.5/3.5; border-radius:18px; padding:12px;
+  display:flex; flex-direction:column; gap:10px; overflow:hidden;
+  border:1px solid var(--border-2); background:var(--card);
+  box-shadow:var(--sh-2), inset 0 1px 0 rgba(255,255,255,.6);
+}
+.gamecard.is-foil { border-color:color-mix(in oklch, var(--magenta) 30%, var(--border-2)); }
+.gamecard.is-foil::after {
+  content:""; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+  background:linear-gradient(115deg,
+    transparent 18%, rgba(255,255,255,.1) 34%,
+    rgba(80,208,176,.15) 43%, rgba(136,152,240,.16) 50%,
+    rgba(224,64,136,.15) 57%, rgba(224,64,136,.13) 66%, transparent 84%);
+  background-size:260% 260%;
+  animation:foilsweep 6s ease-in-out infinite;
+}
+@keyframes foilsweep { 0%,100% { background-position:0% 50%; } 50% { background-position:100% 50%; } }
+@media (prefers-reduced-motion:reduce) { .gamecard.is-foil::after { animation:none; } }
+.gamecard .gc-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.gamecard .gc-name { font-family:var(--fdisplay); font-weight:700; font-size:15px; letter-spacing:-0.01em; line-height:1.05; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; }
+.gamecard .gc-art {
+  position:relative; flex:1; border-radius:10px; overflow:hidden;
+  background:radial-gradient(circle at 40% 35%, color-mix(in oklch, var(--magenta) 18%, var(--surface)), var(--surface));
+  display:grid; place-items:center; box-shadow:inset 0 0 0 1px rgba(0,0,0,.02);
+}
+.gamecard .gc-art .ph { font-family:var(--fmono); font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+.gamecard .gc-foot { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.gamecard .gc-price { font-family:var(--fmono); font-weight:700; font-size:14px; }
+
+/* ═══════ TCG SELECTOR ═══════ */
+.tcg-bar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.tcg-bar .tcg-label { font-size:11px; color:var(--muted); font-family:var(--fmono); text-transform:uppercase; letter-spacing:.12em; margin-right:4px; }
+
+/* ═══════ BUTTONS ═══════ */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:12px 20px; border-radius:var(--r-sm); font-size:14px; font-weight:600; transition:.18s; white-space:nowrap; text-decoration:none; border:1px solid transparent; cursor:pointer; }
+.btn-lg { padding:16px 28px; font-size:15px; border-radius:var(--r-md); }
+.btn-sm { padding:8px 14px; font-size:13px; }
+.btn-magenta { background:var(--magenta); color:#fff; }
+.btn-magenta:hover { background:var(--magenta-2); box-shadow:var(--sh-glow); transform:translateY(-1px); }
+.btn-violet { background:var(--violet); color:#fff; }
+.btn-violet:hover { filter:brightness(1.12); transform:translateY(-1px); }
+.btn-teal { background:var(--teal); color:#fff; }
+.btn-teal:hover { filter:brightness(1.1); transform:translateY(-1px); }
+.btn-ghost { background:var(--surface); border-color:var(--border); color:var(--text); }
+.btn-ghost:hover { border-color:var(--border-2); background:var(--card-2); }
+
+/* ═══════ CHIPS ═══════ */
+.chip { display:inline-flex; align-items:center; gap:7px; padding:7px 15px; border-radius:var(--r-pill); font-size:13px; font-weight:500; background:var(--surface); border:1px solid var(--border); color:var(--text-2); cursor:pointer; transition:.16s; white-space:nowrap; }
+.chip:hover { border-color:var(--border-2); color:var(--text); }
+.chip.active { font-weight:600; }
+.chip .dot { width:7px; height:7px; border-radius:50%; }
+
+/* ═══════ TAGS ═══════ */
+.tag { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:var(--r-pill); font-size:11px; font-weight:600; font-family:var(--fmono); letter-spacing:0.02em; white-space:nowrap; }
+.tag-up { background:var(--up-bg); color:var(--up); }
+.tag-down { background:var(--down-bg); color:var(--down); }
+.tag-magenta { background:var(--magenta-bg); color:var(--magenta); border:1px solid var(--magenta-bd); }
+.tag-violet { background:var(--violet-bg); color:var(--violet-2); border:1px solid var(--violet-bd); }
+.tag-teal { background:var(--teal-bg); color:var(--teal-2); border:1px solid var(--teal-bd); }
+
+/* ═══════ SECTION HEAD ═══════ */
+.sec-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:22px; }
+.sec-head h2 { font-family:var(--fdisplay); font-size:clamp(22px, 2.8vw, 30px); font-weight:700; letter-spacing:-0.025em; }
+.sec-head h2 .hl { color:var(--magenta); }
+.sec-head .sub { color:var(--muted); font-size:14.5px; margin-top:4px; }
+.sec-head .more { color:var(--magenta-2); font-size:13.5px; font-weight:600; display:inline-flex; align-items:center; gap:5px; text-decoration:none; transition:.15s; }
+.sec-head .more:hover { gap:9px; }
+
+/* ═══════ WHY CARDS ═══════ */
+.why-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+.why-card {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding:24px; display:flex; flex-direction:column; gap:16px;
+  text-decoration:none; color:inherit; transition:.25s;
+  position:relative; overflow:hidden;
+}
+.why-card::before {
+  content:""; position:absolute; top:0; left:0; right:0; height:3px;
+  background:var(--wc-accent, var(--magenta));
+  transform:scaleX(0); transform-origin:left; transition:transform .4s cubic-bezier(.2,.8,.3,1);
+}
+.why-card:hover::before { transform:scaleX(1); }
+.why-card:hover { border-color:var(--border-2); box-shadow:var(--sh-2); transform:translateY(-2px); }
+.why-card .wc-icon { width:44px; height:44px; border-radius:var(--r-sm); display:grid; place-items:center; }
+.why-card .wc-title { font-family:var(--fdisplay); font-weight:700; font-size:18px; letter-spacing:-0.015em; }
+.why-card .wc-body { font-size:14px; color:var(--text-2); line-height:1.55; }
+.why-card .wc-cta { font-size:13.5px; font-weight:600; display:inline-flex; align-items:center; gap:6px; margin-top:auto; }
+.why-card .wc-cta .arr { transition:transform .2s; }
+.why-card:hover .wc-cta .arr { transform:translateX(3px); }
+
+/* ═══════ PULSE GRID ═══════ */
+.pulse-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.pulse-mini {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding:14px 16px; display:flex; align-items:center; gap:10px;
+  text-decoration:none; color:inherit; transition:.2s;
+}
+.pulse-mini:hover { border-color:var(--border-2); box-shadow:var(--sh-2); }
+.pulse-mini .pm-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; box-shadow:0 0 10px color-mix(in oklch, var(--pm-color, var(--magenta)) 55%, transparent); }
+.pulse-mini .pm-info { flex:1; min-width:0; }
+.pulse-mini .pm-name { font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pulse-mini .pm-tcg { font-size:10.5px; color:var(--muted); font-family:var(--fmono); }
+.pulse-mini .pm-move { font-family:var(--fmono); font-size:13px; font-weight:700; white-space:nowrap; }
+
+/* ═══════ TRENDING ═══════ */
+.trend-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(255px, 1fr)); gap:16px; }
+.trend-card {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding:18px; display:flex; flex-direction:column; gap:12px;
+  text-decoration:none; color:inherit; transition:.25s;
+}
+.trend-card:hover { border-color:var(--border-2); box-shadow:var(--sh-2); transform:translateY(-3px); }
+.trend-card .tc-top { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+.trend-card .tc-name { font-family:var(--fdisplay); font-weight:700; font-size:15px; letter-spacing:-0.01em; line-height:1.15; flex:1; min-width:0; }
+.trend-card .tc-price-row { display:flex; align-items:baseline; justify-content:space-between; }
+.trend-card .tc-price { font-family:var(--fmono); font-weight:700; font-size:20px; }
+.trend-card .tc-set { font-size:11px; color:var(--muted); font-family:var(--fmono); }
+.trend-card .tc-health { display:flex; align-items:center; gap:8px; }
+.trend-card .hs-num { font-family:var(--fdisplay); font-size:22px; font-weight:700; letter-spacing:-0.02em; }
+.trend-card .hs-label { font-size:10.5px; color:var(--muted); font-family:var(--fmono); text-transform:uppercase; letter-spacing:.1em; }
+.trend-card .hs-bar-wrap { flex:1; height:3px; border-radius:2px; background:var(--surface); overflow:hidden; }
+.trend-card .hs-bar-fill { height:100%; border-radius:2px; }
+.trend-card .tc-spark { height:36px; margin-top:2px; }
+.trend-card .tc-spark svg { width:100%; height:100%; }
+
+/* ═══════ COLECIONADOR ═══════ */
+.collector-section { display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:center; }
+.collector-left { display:flex; flex-direction:column; gap:20px; }
+.collector-left h3 { font-family:var(--fdisplay); font-size:clamp(24px, 3.2vw, 34px); font-weight:700; letter-spacing:-0.025em; }
+.collector-left p { font-size:16px; color:var(--text-2); line-height:1.6; max-width:460px; }
+.collector-stats { display:flex; gap:32px; }
+.collector-stat .cv { font-family:var(--fdisplay); font-size:28px; font-weight:700; letter-spacing:-0.02em; }
+.collector-stat .cl { font-size:12px; color:var(--muted); margin-top:3px; }
+
+/* ═══════ TRUST ═══════ */
+.trust-strip { display:flex; align-items:center; gap:20px; flex-wrap:wrap; }
+.trust-item { display:inline-flex; align-items:center; gap:6px; font-size:13px; color:var(--text-2); font-weight:500; }
+.trust-item .dot { width:6px; height:6px; border-radius:50%; background:var(--teal); }
+
+/* ═══════ LOJISTA ═══════ */
+.lojista-card { background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); padding:22px 26px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+
+/* ═══════ MOBILE ═══════ */
+@media (max-width:768px) {
+  .hero { grid-template-columns:1fr; min-height:auto; padding:40px 0 28px; gap:24px; }
+  .hero-right { display:none; }
+  .hero h1 { font-size:36px; }
+  .hero-sub { font-size:16px; }
+  .hero-stats { gap:20px; flex-wrap:wrap; }
+  .nav-search { display:none; }
+  .nav-links { display:none; }
+  .why-grid { grid-template-columns:1fr; }
+  .pulse-grid { grid-template-columns:repeat(2,1fr); }
+  .trend-grid { grid-template-columns:1fr; }
+  .collector-section { grid-template-columns:1fr; gap:32px; }
+  .collector-right { display:none; }
+  .collector-stats { gap:20px; flex-wrap:wrap; }
+  section { padding:40px 0; }
+}
+@media (max-width:480px) {
+  .hero h1 { font-size:28px; }
+  .wrap { padding:0 16px; }
+}
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="/" class="logo"><span class="mark">T</span>TCG<b>Hub</b></a>
+    <div class="nav-links">
+      <a href="/explorar" class="nav-link">Explorar</a>
+      <a href="/mercado" class="nav-link">Mercado</a>
+      <a href="/colecao" class="nav-link">Coleção</a>
+      <a href="/alertas" class="nav-link">Alertas</a>
+    </div>
+    <div class="nav-right">
+      <div class="nav-search" onclick="document.getElementById('heroSearch').focus()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <span>Buscar carta...</span>
+        <kbd>⌘K</kbd>
+      </div>
+      <a href="/comecar" class="btn btn-magenta btn-sm">Começar</a>
+    </div>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="wrap">
+
+    <!-- ═══════════ HERO ═══════════ -->
+    <section class="hero" style="border-top:none;">
+      <div class="hero-left">
+        <div class="hero-eyebrow">Pokémon · Magic · Yu‑Gi‑Oh! · One Piece · Lorcana</div>
+        <h1>
+          Sua coleção<br>
+          <span class="holo">vale mais</span> do que<br>
+          você imagina<span style="color:var(--magenta);">.</span>
+        </h1>
+        <p class="hero-sub">
+          A gente escaneia, precifica e <strong>te avisa</strong> quando valorizar. 
+          Sem comprar nada. Sem compromisso.
+        </p>
+        <div class="hero-actions">
+          <a href="/scanner" class="btn btn-magenta btn-lg">Escanear meu binder</a>
+          <a href="/explorar" class="btn btn-violet btn-lg">Explorar catálogo</a>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><div class="hv">256K+</div><div class="hl">Cartas catalogadas</div></div>
+          <div class="hero-stat"><div class="hv">15</div><div class="hl">TCGs mapeados</div></div>
+          <div class="hero-stat"><div class="hv" style="color:var(--magenta);">BRL</div><div class="hl">Preços em reais</div></div>
+        </div>
+      </div>
+      <div class="hero-right">
+        <div class="cardfan">
+          <div class="gamecard c-left">
+            <div class="gc-top"><span class="gc-name">Charizard VMAX</span></div>
+            <div class="gc-art"><span class="ph">Pokémon</span></div>
+            <div class="gc-foot"><span class="gc-price">R$ 847</span><span class="tag tag-up">+12%</span></div>
+          </div>
+          <div class="gamecard is-foil c-mid">
+            <div class="gc-top"><span class="gc-name">Pikachu ex</span><span class="tag tag-up">+22%</span></div>
+            <div class="gc-art"><span class="ph">Pokémon</span></div>
+            <div class="gc-foot"><span class="gc-price">R$ 342</span><span style="font-size:10px;color:var(--magenta);font-weight:600;">★ Foil</span></div>
+          </div>
+          <div class="gamecard c-right">
+            <div class="gc-top"><span class="gc-name">Elsa</span></div>
+            <div class="gc-art"><span class="ph">Lorcana</span></div>
+            <div class="gc-foot"><span class="gc-price">R$ 1.2K</span><span class="tag tag-up">+18%</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ TCG SELECTOR ═══════════ -->
+    <section style="padding:20px 0;">
+      <div class="tcg-bar">
+        <span class="tcg-label">Filtrar por</span>
+        <button class="chip active" style="background:#f2c94c20;border-color:#e8c840;color:#b8942e;font-weight:600;"><span class="dot" style="background:#f2c94c;"></span>Pokémon</button>
+        <button class="chip"><span class="dot" style="background:#e0853f;"></span>Magic</button>
+        <button class="chip"><span class="dot" style="background:#b46fd6;"></span>Yu‑Gi‑Oh!</button>
+        <button class="chip"><span class="dot" style="background:#e0563f;"></span>One Piece</button>
+        <button class="chip"><span class="dot" style="background:#3d9be0;"></span>Lorcana</button>
+        <button class="chip" style="color:var(--muted);">+10 TCGs</button>
+      </div>
+    </section>
+
+    <!-- ═══════════ BUSCA (secundária, abaixo do hero) ═══════════ -->
+    <section style="padding:20px 0;">
+      <div style="position:relative;max-width:560px;">
+        <input type="text" id="heroSearch" class="nav-search" style="width:100%;padding:14px 48px 14px 20px;background:var(--card);border:1px solid var(--border-2);border-radius:var(--r-md);font-size:15px;color:var(--text);font-family:var(--fbody);outline:none;cursor:text;" placeholder='Busque uma carta... "Charizard", "Pikachu"...' autocomplete="off" onfocus="this.style.borderColor='var(--magenta-bd)';this.style.boxShadow='0 0 0 4px var(--magenta-bg), var(--sh-2)'" onblur="this.style.borderColor='var(--border-2)';this.style.boxShadow='none'">
+        <svg style="position:absolute;right:16px;top:50%;transform:translateY(-50%);color:var(--magenta);pointer-events:none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      </div>
+    </section>
+
+    <!-- ═══════════ POR QUE TCGHUB ═══════════ -->
+    <section>
+      <div class="sec-head">
+        <div>
+          <h2>Inteligência <span class="hl">antes</span> do marketplace</h2>
+          <div class="sub">Primeiro entenda o que você tem. Depois negocie com confiança.</div>
+        </div>
+      </div>
+      <div class="why-grid">
+        <a href="/colecao" class="why-card" style="--wc-accent:var(--magenta);">
+          <div class="wc-icon" style="background:var(--magenta-bg);color:var(--magenta);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          </div>
+          <div class="wc-title">Sua coleção em reais</div>
+          <div class="wc-body">Importe, escaneie ou cadastre. A gente calcula o valor total, mostra o que falta e te avisa quando valorizar.</div>
+          <span class="wc-cta" style="color:var(--magenta);">Minha coleção <span class="arr">→</span></span>
+        </a>
+        <a href="/mercado" class="why-card" style="--wc-accent:var(--violet);">
+          <div class="wc-icon" style="background:var(--violet-bg);color:var(--violet);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg>
+          </div>
+          <div class="wc-title">Entenda o movimento</div>
+          <div class="wc-body">Health Score de cada carta. Tendências, alertas, recomendação Buy/Hold/Sell. Nada de achismo.</div>
+          <span class="wc-cta" style="color:var(--violet);">Ver mercado <span class="arr">→</span></span>
+        </a>
+        <a href="/explorar" class="why-card" style="--wc-accent:var(--teal);">
+          <div class="wc-icon" style="background:var(--teal-bg);color:var(--teal);">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          </div>
+          <div class="wc-title">Descubra o acervo</div>
+          <div class="wc-body">256 mil cartas em 15 TCGs. Busque por nome, set ou raridade — tudo com preço em real e imagem.</div>
+          <span class="wc-cta" style="color:var(--teal);">Explorar <span class="arr">→</span></span>
+        </a>
+      </div>
+    </section>
+
+    <!-- ═══════════ PULSO DO MERCADO ═══════════ -->
+    <section>
+      <div class="sec-head">
+        <div>
+          <h2>O que está <span class="hl">subindo</span> agora</h2>
+          <div class="sub">Movimento real. A gente monitora pra você não precisar.</div>
+        </div>
+        <a href="/mercado" class="more">Ver mercado completo →</a>
+      </div>
+      <div class="pulse-grid">
+        <a href="/carta/pikachu-ex" class="pulse-mini" style="--pm-color:#f2c94c;">
+          <span class="pm-dot" style="background:#f2c94c;"></span>
+          <div class="pm-info"><div class="pm-name">Pikachu ex</div><div class="pm-tcg">Pokémon · Surging Sparks</div></div>
+          <span class="pm-move" style="color:var(--up);">+22%</span>
+        </a>
+        <a href="/carta/elsa" class="pulse-mini" style="--pm-color:#3d9be0;">
+          <span class="pm-dot" style="background:#3d9be0;"></span>
+          <div class="pm-info"><div class="pm-name">Elsa — Spirit of Winter</div><div class="pm-tcg">Lorcana · First Chapter</div></div>
+          <span class="pm-move" style="color:var(--up);">+18%</span>
+        </a>
+        <a href="/carta/charizard-ex" class="pulse-mini" style="--pm-color:#f2c94c;">
+          <span class="pm-dot" style="background:#f2c94c;"></span>
+          <div class="pm-info"><div class="pm-name">Charizard ex</div><div class="pm-tcg">Pokémon · Obsidian Flames</div></div>
+          <span class="pm-move" style="color:var(--up);">+15%</span>
+        </a>
+        <a href="/carta/blue-eyes" class="pulse-mini" style="--pm-color:#b46fd6;">
+          <span class="pm-dot" style="background:#b46fd6;"></span>
+          <div class="pm-info"><div class="pm-name">Blue-Eyes White Dragon</div><div class="pm-tcg">Yu‑Gi‑Oh! · LOB 1st</div></div>
+          <span class="pm-move" style="color:var(--down);">−5%</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- ═══════════ TERMÔMETRO ═══════════ -->
+    <section>
+      <div class="sec-head">
+        <div>
+          <h2>Termômetro do <span class="hl">mercado</span></h2>
+          <div class="sub">Health Score em cada carta. Saber se é hora de comprar, segurar ou vender.</div>
+        </div>
+      </div>
+      <div class="trend-grid">
+        <a href="/carta/charizard-vmax" class="trend-card">
+          <div class="tc-top"><span class="tc-name">Charizard VMAX</span><span class="tag tag-up">+12%</span></div>
+          <div class="tc-price-row"><span class="tc-price">R$ 847</span><span class="tc-set">Shining Fates</span></div>
+          <div class="tc-health">
+            <span class="hs-num" style="color:var(--up);">82</span><span class="hs-label">Saúde</span>
+            <div class="hs-bar-wrap"><div class="hs-bar-fill" style="width:82%;background:var(--up);"></div></div>
+          </div>
+          <div class="tc-spark"><svg viewBox="0 0 200 36" preserveAspectRatio="none"><path fill="none" stroke="var(--up)" stroke-width="2" d="M0,28 Q30,26 60,22 T120,14 T200,6"/><path fill="var(--up)" opacity=".12" d="M0,28 Q30,26 60,22 T120,14 T200,6 L200,36 L0,36 Z"/></svg></div>
+          <span class="tag tag-magenta" style="align-self:flex-start;">Buy</span>
+        </a>
+        <a href="/carta/pikachu-ex" class="trend-card">
+          <div class="tc-top"><span class="tc-name">Pikachu ex</span><span class="tag tag-up">+22%</span></div>
+          <div class="tc-price-row"><span class="tc-price">R$ 342</span><span class="tc-set">Surging Sparks</span></div>
+          <div class="tc-health">
+            <span class="hs-num" style="color:var(--up);">91</span><span class="hs-label">Saúde</span>
+            <div class="hs-bar-wrap"><div class="hs-bar-fill" style="width:91%;background:var(--up);"></div></div>
+          </div>
+          <div class="tc-spark"><svg viewBox="0 0 200 36" preserveAspectRatio="none"><path fill="none" stroke="var(--up)" stroke-width="2" d="M0,24 Q40,20 80,14 T160,4 T200,2"/><path fill="var(--up)" opacity=".12" d="M0,24 Q40,20 80,14 T160,4 T200,2 L200,36 L0,36 Z"/></svg></div>
+          <span class="tag tag-magenta" style="align-self:flex-start;">Buy</span>
+        </a>
+        <a href="/carta/blue-eyes" class="trend-card">
+          <div class="tc-top"><span class="tc-name">Blue-Eyes White Dragon</span><span class="tag tag-down">−5%</span></div>
+          <div class="tc-price-row"><span class="tc-price">R$ 3.4K</span><span class="tc-set">LOB 1st Ed</span></div>
+          <div class="tc-health">
+            <span class="hs-num" style="color:var(--magenta);">58</span><span class="hs-label">Saúde</span>
+            <div class="hs-bar-wrap"><div class="hs-bar-fill" style="width:58%;background:var(--magenta);"></div></div>
+          </div>
+          <div class="tc-spark"><svg viewBox="0 0 200 36" preserveAspectRatio="none"><path fill="none" stroke="var(--down)" stroke-width="2" d="M0,8 Q30,10 60,6 T120,12 T200,18"/><path fill="var(--down)" opacity=".12" d="M0,8 Q30,10 60,6 T120,12 T200,18 L200,36 L0,36 Z"/></svg></div>
+          <span class="tag" style="background:var(--magenta-bg);color:var(--magenta-ink);align-self:flex-start;">Hold</span>
+        </a>
+        <a href="/carta/elsa" class="trend-card">
+          <div class="tc-top"><span class="tc-name">Elsa — Spirit of Winter</span><span class="tag tag-up">+18%</span></div>
+          <div class="tc-price-row"><span class="tc-price">R$ 1.2K</span><span class="tc-set">The First Chapter</span></div>
+          <div class="tc-health">
+            <span class="hs-num" style="color:var(--up);">88</span><span class="hs-label">Saúde</span>
+            <div class="hs-bar-wrap"><div class="hs-bar-fill" style="width:88%;background:var(--up);"></div></div>
+          </div>
+          <div class="tc-spark"><svg viewBox="0 0 200 36" preserveAspectRatio="none"><path fill="none" stroke="var(--up)" stroke-width="2" d="M0,22 Q50,18 100,12 T200,4"/><path fill="var(--up)" opacity=".12" d="M0,22 Q50,18 100,12 T200,4 L200,36 L0,36 Z"/></svg></div>
+          <span class="tag tag-magenta" style="align-self:flex-start;">Buy</span>
+        </a>
+      </div>
+    </section>
+
+    <!-- ═══════════ SUA COLEÇÃO ═══════════ -->
+    <section>
+      <div class="collector-section">
+        <div class="collector-left">
+          <h3>E aí, quanto vale <span style="color:var(--magenta);">a sua</span>?</h3>
+          <p>Tem binder guardado? Pasta da época da escola? Escaneia aí — a gente mostra o valor real e te avisa quando algo disparar.</p>
+          <div class="collector-stats">
+            <div class="collector-stat"><div class="cv">R$ 12.847</div><div class="cl">Coleção média de um colecionador</div></div>
+            <div class="collector-stat"><div class="cv" style="color:var(--up);">+8%</div><div class="cl">Valorização nos últimos 30 dias</div></div>
+            <div class="collector-stat"><div class="cv">43</div><div class="cl">Cartas em Shining Fates</div></div>
+          </div>
+          <div style="display:flex;gap:12px;">
+            <a href="/scanner" class="btn btn-magenta btn-lg">Escanear meu binder</a>
+            <a href="/importar" class="btn btn-ghost btn-lg">Importar CSV</a>
+          </div>
+        </div>
+        <div class="collector-right" style="display:flex;align-items:center;justify-content:center;">
+          <div class="gamecard is-foil" style="max-width:250px;width:100%;padding:16px;border-radius:22px;background:linear-gradient(160deg, var(--card), color-mix(in oklch, var(--magenta) 5%, var(--card)));">
+            <div class="gc-top"><span class="gc-name" style="font-size:18px;">Charizard</span><span class="tag tag-up">+12%</span></div>
+            <div class="gc-art" style="background:radial-gradient(circle at 35% 40%, color-mix(in oklch, var(--magenta) 25%, var(--surface)), var(--surface));"><span class="ph">Pokémon</span></div>
+            <div class="gc-foot"><span class="gc-price" style="font-size:18px;">R$ 847</span><span style="font-size:11px;color:var(--muted);">Shining Fates</span></div>
+            <div style="display:flex;align-items:center;gap:8px;color:var(--magenta);font-family:var(--fmono);font-size:12px;font-weight:600;margin-top:4px;">★ Na sua coleção</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════ TRUST + LOJISTA ═══════════ -->
+    <section style="padding:20px 0;">
+      <div class="trust-strip">
+        <span style="font-size:11px;color:var(--muted);font-family:var(--fmono);text-transform:uppercase;letter-spacing:.1em;">Preços de</span>
+        <span class="trust-item"><span class="dot"></span> TCGPlayer</span>
+        <span class="trust-item"><span class="dot"></span> Cardmarket</span>
+        <span class="trust-item"><span class="dot"></span> LigaPokémon</span>
+        <span class="trust-item"><span class="dot"></span> Scryfall</span>
+      </div>
+    </section>
+    <section style="padding:16px 0 0;">
+      <div class="lojista-card">
+        <div><span style="font-weight:600;font-size:15px;">Tem uma loja?</span> <span style="font-size:13.5px;color:var(--text-2);">BuyList, gestão de estoque, precificação inteligente.</span></div>
+        <a href="/lojista" class="btn btn-ghost">Sou lojista →</a>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+</body>
+</html>
